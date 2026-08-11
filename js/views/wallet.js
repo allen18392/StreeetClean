@@ -185,7 +185,7 @@ window.WalletView = {
 
     const success = window.appState.withdraw(amt, provider);
     if (success) {
-      window.soundSystem.cash();
+      window.soundSystem.fanfare();
       window.closeModal();
       window.showToast(`₱${amt.toFixed(2)} sent directly to your ${provider} account! Reference: WD-${Date.now().toString().slice(-6)}`, 'gold');
       window.renderRoute();

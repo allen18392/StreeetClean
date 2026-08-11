@@ -15,7 +15,7 @@ class MapEngine {
   }
 
   // Create custom SVG badges for Leaflet pins
-  createCustomIcon(status = 'open', bounty = '₱850') {
+  createCustomIcon(status = 'open', bounty = 'Reward TBD') {
     let bgColor = '#f59e0b';
     let textColor = '#ffffff';
     let iconClass = 'fa-fire-flame-curved';
@@ -94,14 +94,14 @@ class MapEngine {
     commissions.forEach(comm => {
       if (comm.lat && comm.lng) {
         const marker = L.marker([comm.lat, comm.lng], {
-          icon: this.createCustomIcon(comm.status, `₱${comm.rewardPhp.toFixed(0)}`)
+          icon: this.createCustomIcon(comm.status, Number(comm.rewardPhp) > 0 ? `₱${Number(comm.rewardPhp).toFixed(0)}` : 'TBD')
         }).addTo(map);
 
         const popupContent = `
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; padding: 4px; min-width: 220px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
               <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; background: #f0fdf4; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #bbf7d0;">${comm.category}</span>
-              <span style="font-weight: 800; color: #b45309; font-family: monospace; font-size: 13px;">₱${comm.rewardPhp.toFixed(0)}</span>
+              <span style="font-weight: 800; color: #b45309; font-family: monospace; font-size: 13px;">${Number(comm.rewardPhp) > 0 ? `₱${Number(comm.rewardPhp).toFixed(0)}` : 'Reward TBD'}</span>
             </div>
             <div style="font-weight: 800; font-size: 13px; margin-bottom: 4px; color: #0f172a; line-height: 1.3;">${comm.title}</div>
             <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;"><i class="fa-solid fa-location-dot" style="color: #059669;"></i> ${comm.sector}</div>

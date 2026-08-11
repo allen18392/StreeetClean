@@ -13,7 +13,6 @@ window.ReportView = {
     lng: 123.7345,
     category: 'Plastics & Beverage Cups',
     severity: 'high',
-    rewardPhp: 500,
     estimatedWeightKg: 25,
     description: '',
     imageUrl: 'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=800&q=80',
@@ -34,14 +33,14 @@ window.ReportView = {
             </div>
             <h1 style="font-size: 1.4rem; font-weight: 800; margin-top: 6px; color: #0f172a;">Report Litter Hotspot</h1>
             <p style="font-size: 0.82rem; color: #64748b;">
-              Pin festival litter in Legazpi City, set a cleanup reward, and alert local cleaners.
+              Pin festival litter in Legazpi City and alert local cleaners. The cleanup reward will be determined later by an authorized LGU verifier.
             </p>
           </div>
 
           <!-- Wizard Progress Bar -->
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; background: #ffffff; padding: 8px 14px; border-radius: var(--radius-full); border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm);">
             <div style="font-size: 0.78rem; font-weight: 700; color: var(--emerald-700);">
-              Step ${this.currentStep} of 3: ${this.currentStep === 1 ? 'Location & Zone' : (this.currentStep === 2 ? 'Litter Category' : 'Photo & Bounty')}
+              Step ${this.currentStep} of 3: ${this.currentStep === 1 ? 'Location & Zone' : (this.currentStep === 2 ? 'Litter Category' : 'Photo Evidence')}
             </div>
             <div style="display: flex; gap: 6px;">
               <span style="width: 10px; height: 10px; border-radius: 50%; background: ${this.currentStep >= 1 ? 'var(--emerald-600)' : '#cbd5e1'};"></span>
@@ -177,7 +176,7 @@ window.ReportView = {
             <i class="fa-solid fa-arrow-left"></i> Back
           </button>
           <button class="btn btn-primary" onclick="window.ReportView.goToStep(3)">
-            Next: Photo & Bounty <i class="fa-solid fa-arrow-right"></i>
+            Next: Photo Evidence <i class="fa-solid fa-arrow-right"></i>
           </button>
         </div>
       </div>
@@ -187,9 +186,9 @@ window.ReportView = {
   renderStep3(user) {
     return `
       <div>
-        <h2 style="font-size: 1.05rem; margin-bottom: 4px; color: #0f172a;">3. Photo Evidence & ₱ Bounty</h2>
+        <h2 style="font-size: 1.05rem; margin-bottom: 4px; color: #0f172a;">3. Photo Evidence</h2>
         <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.25rem;">
-          Upload clear before photos of the litter pile and assign a reward.
+          Upload clear before photos of the litter pile. An authorized LGU verifier will review the report and determine a flexible cleanup reward.
         </p>
 
         <!-- Real Photo Upload -->
@@ -226,17 +225,14 @@ window.ReportView = {
           </div>
         </div>
 
-        <!-- ₱ Bounty Setting -->
-        <div class="form-group" style="margin-top: 1rem;">
-          <label class="form-label">
-            <span>₱ Bounty Reward for Cleaner</span>
-            <span class="font-mono" style="color: #b45309; font-weight: 800; font-size: 1.1rem;" id="bounty-val-display">₱${this.formData.rewardPhp}</span>
-          </label>
-          <input type="range" class="form-control" style="padding: 0; accent-color: var(--emerald-600);" min="300" max="2500" step="50" value="${this.formData.rewardPhp}" oninput="window.ReportView.updateBountyDisplay(this.value)" />
-          <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #64748b; margin-top: 4px;">
-            <span>₱300 (Standard)</span>
-            <span>₱1,200 (Large Arena)</span>
-            <span>₱2,500 (Heavy)</span>
+        <!-- Reward notice -->
+        <div class="card" style="margin-top: 1rem; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e;">
+          <div style="display:flex; align-items:flex-start; gap:10px;">
+            <i class="fa-solid fa-shield-halved" style="margin-top:2px;"></i>
+            <div>
+              <div style="font-size:.8rem;font-weight:800;margin-bottom:2px;">Reward determined by LGU / authorized verifier</div>
+              <div style="font-size:.72rem;line-height:1.45;">You do not set or fund a bounty when reporting. The official reviewing the report will set the appropriate amount based on the cleanup scope, urgency, weight, and site conditions.</div>
+            </div>
           </div>
         </div>
 
@@ -328,23 +324,8 @@ window.ReportView = {
   },
 
 
-  updateBountyDisplay(val) {
-    this.formData.rewardPhp = parseFloat(val);
-    const el = document.getElementById('bounty-val-display');
-    if (el) el.innerText = `₱${val}`;
-  },
-
-  async handlePhotoUpload(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-
-    try {
-      window.showToast('Processing photo...', 'success');
-      this.formData.imageUrl = await window.compressImageToDataUrl(file);
-      window.renderRoute();
-    } catch (err) {
-      window.showToast(err.message || 'Could not process that photo.', 'error');
-    }
+  triggerCamera() {
+    window.showToast('Camera snapshot taken & GPS tagged: Peñaranda Festival Zone.', 'success');
   },
 
   useCurrentGps() {
@@ -381,7 +362,6 @@ window.ReportView = {
         lng: this.formData.lng,
         category: this.formData.category,
         severity: this.formData.severity,
-        rewardPhp: this.formData.rewardPhp,
         estimatedWeightKg: this.formData.estimatedWeightKg,
         description: this.formData.description || `Reported ${this.formData.category} during festival festivities.`,
         imageUrl

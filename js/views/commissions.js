@@ -13,6 +13,7 @@ window.CommissionsView = {
     const openCount = window.appState.getCommissions('open').length;
     const activeCount = window.appState.getCommissions('in_progress').length;
     const reviewCount = window.appState.getCommissions('in_review').length;
+    const pendingBountyCount = window.appState.getCommissions('pending_bounty').length;
 
     return `
       <div class="commissions-view animate-fade-in" style="padding: 1rem 0 2.5rem 0;">
@@ -47,7 +48,10 @@ window.CommissionsView = {
                 All (${window.appState.commissions.length})
               </button>
               <button class="chip-select-btn ${this.activeFilter === 'open' ? 'active' : ''}" onclick="window.CommissionsView.setFilter('open')">
-                🟡 Open Bounties (${openCount})
+                🟡 Open Tasks (${openCount})
+              </button>
+              <button class="chip-select-btn ${this.activeFilter === 'pending_bounty' ? 'active' : ''}" onclick="window.CommissionsView.setFilter('pending_bounty')">
+                🟣 Awaiting LGU Reward (${pendingBountyCount})
               </button>
               <button class="chip-select-btn ${this.activeFilter === 'in_progress' ? 'active' : ''}" onclick="window.CommissionsView.setFilter('in_progress')">
                 🔵 Claimed / Active (${activeCount})
@@ -110,7 +114,7 @@ window.CommissionsView = {
             <span class="severity-pill ${c.severity}" style="margin-left: 4px;">${c.severity}</span>
           </div>
           <div class="task-card-bounty">
-            ₱${c.rewardPhp.toFixed(0)}
+            ${Number(c.rewardPhp) > 0 ? `₱${Number(c.rewardPhp).toFixed(0)}` : 'Reward TBD'}
           </div>
         </div>
 

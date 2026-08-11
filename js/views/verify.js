@@ -6,12 +6,22 @@
 window.VerifyView = {
   render() {
     const user = window.appState.getUser();
+    const pendingBounties = window.appState.getCommissions('pending_bounty');
     const pendingReviews = window.appState.getCommissions('in_review');
     const completedCleans = window.appState.getCommissions('completed');
+    const isVerifier = user?.role === 'verifier';
 
     return `
       <div class="verify-view animate-fade-in" style="padding: 1rem 0 2.5rem 0;">
         <div class="app-container" style="max-width: 800px;">
+
+          ${!isVerifier ? `
+            <div class="card" style="padding:1.25rem;margin-bottom:1.25rem;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;text-align:center;">
+              <i class="fa-solid fa-lock" style="font-size:1.5rem;margin-bottom:6px;"></i>
+              <div style="font-weight:800;">Verifier access required</div>
+              <div style="font-size:.78rem;margin-top:4px;">Only authorized LGU verifiers / officials can assign cleanup rewards and approve completed tasks.</div>
+            </div>
+          ` : ''}
 
           <!-- Verifier Status Banner -->
           <div class="card card-gold-glow" style="padding: 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; background: #ffffff; border: 1px solid #bbf7d0;">
@@ -40,6 +50,27 @@ window.VerifyView = {
               </div>
             </div>
           </div>
+
+          ${isVerifier ? `
+          <!-- Reports Awaiting LGU Reward Assignment -->
+          <div style="margin-bottom: 1.75rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+              <h2 style="font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 8px; color: #0f172a;">
+                <i class="fa-solid fa-coins" style="color: #7e22ce;"></i> Reports Awaiting Reward Assignment (${pendingBounties.length})
+              </h2>
+            </div>
+
+            ${pendingBounties.length === 0 ? `
+              <div class="card" style="padding:1rem 1.25rem;background:#faf5ff;border:1px solid #e9d5ff;color:#7e22ce;font-size:.8rem;">
+                <i class="fa-solid fa-circle-check"></i> No unpriced reports are waiting for an LGU reward decision.
+              </div>
+            ` : `
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                ${pendingBounties.map(c => this.renderBountyAssignmentCard(c)).join('')}
+              </div>
+            `}
+          </div>
+          ` : ''}
 
           <!-- Pending Verifications Queue -->
           <div style="margin-bottom: 1.75rem;">
@@ -93,6 +124,60 @@ window.VerifyView = {
     `;
   },
 
+  renderBountyAssignmentCard(c) {
+    return `
+      <div class="card" style="padding:1.25rem;background:#ffffff;border:1px solid #e9d5ff;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
+          <div style="min-width:0;flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="status-badge" style="background:#f3e8ff;color:#7e22ce;border:1px solid #d8b4fe;"><span class="badge-dot"></span> Reward Needed</span>
+              <span class="font-mono" style="font-size:.7rem;color:#64748b;">${c.id}</span>
+            </div>
+            <div style="font-size:1rem;font-weight:800;color:#0f172a;">${c.title}</div>
+            <div style="font-size:.74rem;color:#64748b;margin-top:3px;">${c.sector} • ${c.severity} • ~${c.estimatedWeightKg} kg</div>
+          </div>
+          <div style="font-size:.72rem;color:#7e22ce;font-weight:700;">Resident report</div>
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:10px;font-size:.76rem;color:#475569;line-height:1.45;">
+          <strong>Description:</strong> ${c.description || 'No additional notes provided.'}
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;">
+            <label class="form-label" for="bounty-${c.id}">Set flexible cleanup reward</label>
+            <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:800;color:#b45309;">₱</span>
+              <input id="bounty-${c.id}" type="number" min="0.01" step="0.01" placeholder="Enter amount" class="form-control" style="padding-left:28px;" />
+            </div>
+            <div style="font-size:.68rem;color:#64748b;margin-top:4px;">No fixed minimum or maximum. Use your official assessment of the work required.</div>
+          </div>
+          <button class="btn btn-gold" style="min-height:42px;" onclick="window.VerifyView.assignBounty('${c.id}')">
+            <i class="fa-solid fa-check"></i> Assign Reward & Publish Task
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  assignBounty(id) {
+    const input = document.getElementById(`bounty-${id}`);
+    const amount = Number(input?.value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      window.showToast('Enter a valid reward greater than ₱0.', 'error');
+      return;
+    }
+
+    const success = window.appState.assignBounty(id, amount);
+    if (success) {
+      window.soundSystem.success();
+      window.showToast(`Reward set to ₱${amount.toFixed(2)}. Task is now open for cleaners.`, 'gold');
+      window.renderRoute();
+    } else {
+      window.showToast('Only an authorized verifier can assign this reward.', 'error');
+    }
+  },
+
   renderVerificationCard(c) {
     const proof = c.proofData || {
       weightRecordedKg: c.estimatedWeightKg,
@@ -115,7 +200,7 @@ window.VerifyView = {
             <p style="font-size: 0.78rem; color: #64748b;"><i class="fa-solid fa-map-pin" style="color: var(--emerald-600);"></i> ${c.address}</p>
           </div>
           <div style="text-align: right;">
-            <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #b45309;">₱${c.rewardPhp.toFixed(0)}</div>
+            <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #b45309;">₱${Number(c.rewardPhp).toFixed(0)}</div>
             <div style="font-size: 0.7rem; color: var(--emerald-700); font-weight: 700;">+${c.cleanPoints} points</div>
           </div>
         </div>
@@ -181,7 +266,7 @@ window.VerifyView = {
             <i class="fa-solid fa-rotate-left"></i> Reject / Re-clean
           </button>
           <button class="btn btn-primary" style="flex: 2;" onclick="window.VerifyView.approveProof('${c.id}')">
-            <i class="fa-solid fa-stamp"></i> Approve & Release ₱${c.rewardPhp.toFixed(0)}
+            <i class="fa-solid fa-stamp"></i> Approve & Release ₱${Number(c.rewardPhp).toFixed(0)}
           </button>
         </div>
 
@@ -208,53 +293,17 @@ window.VerifyView = {
     const success = window.appState.verifyProof(id, true);
     if (success) {
       window.soundSystem.fanfare();
-      window.showToast('Cleanup Approved! ₱ Bounty & Clean Points released to cleaner.', 'gold');
+      window.showToast('Cleanup Approved! The LGU-assigned reward & Clean Points were released to the cleaner.', 'gold');
       window.renderRoute();
     }
   },
 
   rejectProof(id) {
-    const comm = window.appState.getCommissionById(id);
-    if (!comm) return;
-
-    const modalHtml = `
-      <div class="modal-card">
-        <button class="modal-close-btn" onclick="window.closeModal()"><i class="fa-solid fa-xmark"></i></button>
-
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
-          <div class="brand-icon" style="width: 32px; height: 32px; font-size: 0.95rem; background: linear-gradient(135deg, #e11d48, #f43f5e);">
-            <i class="fa-solid fa-rotate-left"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; font-weight: 800; color: #0f172a;">Reject & Return for Re-clean</h3>
-        </div>
-
-        <p style="font-size: 0.82rem; color: #64748b; margin-bottom: 1.25rem;">
-          Let ${comm.assignedTo || 'the cleaner'} know what still needs to be done at <strong>${comm.title}</strong>.
-        </p>
-
-        <div class="form-group">
-          <label class="form-label">Notes for the Cleaner</label>
-          <textarea class="form-control" id="reject-notes" placeholder="e.g. Litter residue remaining near bench"></textarea>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <button class="btn btn-secondary" style="flex: 1;" onclick="window.closeModal()">
-            Cancel
-          </button>
-          <button class="btn btn-primary" style="flex: 2; background: linear-gradient(135deg, #e11d48, #f43f5e); border-color: #e11d48;" onclick="window.VerifyView.confirmReject('${id}')">
-            <i class="fa-solid fa-rotate-left"></i> Confirm Rejection
-          </button>
-        </div>
-      </div>
-    `;
-    window.openModal(modalHtml);
-  },
-
-  confirmReject(id) {
-    const notes = document.getElementById('reject-notes')?.value.trim() || 'Please re-sweep the site.';
-    window.appState.verifyProof(id, false, notes);
-    window.closeModal();
-    window.showToast('Task returned to cleaner for re-cleaning.', 'error');
-    window.renderRoute();
+    const notes = prompt('Enter notes for the cleaner (e.g. "Litter residue remaining near bench"):');
+    if (notes !== null) {
+      window.appState.verifyProof(id, false, notes);
+      window.showToast('Task returned to cleaner for re-cleaning.', 'error');
+      window.renderRoute();
+    }
   }
 };

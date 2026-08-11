@@ -3,46 +3,6 @@
  * Main Application Orchestrator & Client-Side SPA Router (White & Green Theme)
  */
 
-// Reads an image file chosen by the user and downsizes it into a small
-// JPEG data URL. We store photos directly on the Firestore document
-// (imageBefore / imageAfter) instead of Firebase Cloud Storage, since
-// Storage now requires the paid Blaze plan. Firestore documents are
-// capped at 1MiB, so we keep each photo modest (~640px wide, 60%
-// quality) to leave plenty of room for the rest of the report data.
-window.compressImageToDataUrl = (file, maxDimension = 640, quality = 0.6) => {
-  return new Promise((resolve, reject) => {
-    if (!file || !file.type || !file.type.startsWith('image/')) {
-      reject(new Error('Please choose an image file.'));
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Could not read that file.'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Could not load that image.'));
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > height && width > maxDimension) {
-          height = Math.round(height * (maxDimension / width));
-          width = maxDimension;
-        } else if (height >= width && height > maxDimension) {
-          width = Math.round(width * (maxDimension / height));
-          height = maxDimension;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-};
-
 // Central Route Mapper
 window.renderRoute = () => {
   const hash = window.location.hash || '#/';
@@ -279,7 +239,8 @@ window.openCommissionDetails = (id) => {
 
   const user = window.appState.getUser();
 
-  let statusBadge = '<span class="status-badge status-open"><span class="badge-dot"></span> Open Bounty</span>';
+  let statusBadge = '<span class="status-badge status-open"><span class="badge-dot"></span> Open Task</span>';
+  if (comm.status === 'pending_bounty') statusBadge = '<span class="status-badge" style="background:#f3e8ff;color:#7e22ce;border:1px solid #d8b4fe;"><span class="badge-dot"></span> Awaiting LGU Reward</span>';
   if (comm.status === 'in_progress') statusBadge = '<span class="status-badge status-in_progress"><span class="badge-dot"></span> In Progress</span>';
   if (comm.status === 'in_review') statusBadge = '<span class="status-badge status-in_review"><span class="badge-dot"></span> In Review by Verifier</span>';
   if (comm.status === 'completed') statusBadge = '<span class="status-badge status-completed"><span class="badge-dot"></span> Verified & Rewarded</span>';
@@ -303,11 +264,11 @@ window.openCommissionDetails = (id) => {
         <i class="fa-solid fa-location-dot" style="color: var(--emerald-600);"></i> ${comm.sector} • ${comm.address}
       </div>
 
-      <!-- Bounty Hero -->
-      <div style="display: flex; align-items: center; justify-content: space-between; background: #fef3c7; border: 1px solid #fde68a; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+      <!-- Reward Hero -->
+      <div style="display: flex; align-items: center; justify-content: space-between; background: ${Number(comm.rewardPhp) > 0 ? '#fef3c7' : '#f3e8ff'}; border: 1px solid ${Number(comm.rewardPhp) > 0 ? '#fde68a' : '#d8b4fe'}; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
         <div>
-          <div style="font-size: 0.72rem; color: #92400e; text-transform: uppercase; font-weight: 700;">Clean Bounty Reward</div>
-          <div class="font-mono" style="font-size: 1.6rem; font-weight: 800; color: #b45309;">₱${comm.rewardPhp.toFixed(2)}</div>
+          <div style="font-size: 0.72rem; color: ${Number(comm.rewardPhp) > 0 ? '#92400e' : '#7e22ce'}; text-transform: uppercase; font-weight: 700;">${Number(comm.rewardPhp) > 0 ? 'LGU-Assigned Cleanup Reward' : 'Cleanup Reward Pending'}</div>
+          <div class="font-mono" style="font-size: 1.6rem; font-weight: 800; color: ${Number(comm.rewardPhp) > 0 ? '#b45309' : '#7e22ce'};">${Number(comm.rewardPhp) > 0 ? `₱${Number(comm.rewardPhp).toFixed(2)}` : 'TBD'}</div>
         </div>
         <div style="text-align: right;">
           <div style="font-size: 0.72rem; color: #92400e;">Est. Weight / Time</div>
@@ -349,9 +310,15 @@ window.openCommissionDetails = (id) => {
       </div>
 
       <!-- Action Area -->
+      ${comm.status === 'pending_bounty' ? `
+        <div class="card" style="padding:10px;background:#faf5ff;border:1px solid #d8b4fe;text-align:center;color:#7e22ce;font-weight:700;font-size:.85rem;">
+          <i class="fa-solid fa-shield-halved"></i> This report is awaiting an authorized LGU verifier to determine the cleanup reward.
+        </div>
+      ` : ''}
+
       ${comm.status === 'open' ? `
         <button class="btn btn-gold btn-block" onclick="window.claimTask('${comm.id}')">
-          <i class="fa-solid fa-hand-holding-dollar"></i> Claim Cleanup Task (₱${comm.rewardPhp})
+          <i class="fa-solid fa-hand-holding-dollar"></i> Claim Cleanup Task (₱${Number(comm.rewardPhp).toFixed(2)})
         </button>
       ` : ''}
 
@@ -408,9 +375,6 @@ window.claimTask = (id) => {
 window.openSubmitProofForm = (id) => {
   const comm = window.appState.getCommissionById(id);
   if (!comm) return;
-
-  // Cleared/refilled by handleProofPhotoUpload() below as the modal is used.
-  window.proofPhotoDataUrl = null;
 
   const modalHtml = `
     <div class="modal-card">

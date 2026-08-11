@@ -245,23 +245,28 @@ class StateManager {
   }
 
   async loginUser(identifier, password) {
-  const email = identifier.trim().toLowerCase();
+    const email = identifier.trim().toLowerCase();
 
-  let cred;
-  try {
-    cred = await auth.signInWithEmailAndPassword(email, password);
-  } catch (err) {
-    return { success: false, message: humanizeFirebaseError(err) };
+    let cred;
+    try {
+      cred = await auth.signInWithEmailAndPassword(email, password);
+    } catch (err) {
+      return { success: false, message: humanizeFirebaseError(err) };
+    }
+
+    // app.js's onAuthStateChanged listener calls initializeForFirebaseUser,
+    // which is what actually loads the profile/data. We just report success
+    // here so the UI can navigate immediately.
+    return {
+      success: true,
+      user: this.getUser() || makeUserProfile(cred.user.uid, {
+        name: cred.user.displayName || email.split('@')[0],
+        email
+      })
+    };
   }
 
-  // Load the profile now instead of waiting on the separate
-  // onAuthStateChanged listener in app.js — that listener runs
-  // asynchronously and can race with the post-login redirect,
-  // bouncing the user back to #/auth before their profile loads.
-  await this.initializeForFirebaseUser(cred.user);
-
-  return { success: true, user: this.getUser() };
-}
+  // ---- Everything below is unchanged from before ----------------------
 
   async setUserRole(roleKey) {
     const user = this.getUser();
@@ -288,9 +293,10 @@ class StateManager {
 
   getCommissions(filter = 'all') {
     if (filter === 'all') return this.commissions;
-    if (filter === 'open') return this.commissions.filter(c => c.status === 'open');
+    if (filter === 'open') return this.commissions.filter(c => c.status === 'open' && Number(c.rewardPhp) > 0);
     if (filter === 'in_progress' || filter === 'claimed') return this.commissions.filter(c => c.status === 'in_progress');
     if (filter === 'in_review') return this.commissions.filter(c => c.status === 'in_review');
+    if (filter === 'pending_bounty') return this.commissions.filter(c => c.status === 'pending_bounty');
     if (filter === 'completed') return this.commissions.filter(c => c.status === 'completed');
     return this.commissions;
   }
@@ -318,7 +324,6 @@ class StateManager {
     if (!user) return null;
 
     const newId = `SC-${Date.now()}`;
-    const reward = parseFloat(reportData.rewardPhp) || 0;
 
     const newCommission = {
       id: newId,
@@ -330,11 +335,14 @@ class StateManager {
       distanceKm: '0.4 km from selected location',
       category: reportData.category || 'Mixed Organic & Litter',
       severity: reportData.severity || 'medium',
-      rewardPhp: reward,
-      cleanPoints: Math.round(reward * 1.6),
+      rewardPhp: null,
+      bountyStatus: 'pending_assignment',
+      bountyAssignedBy: null,
+      bountyAssignedAt: null,
+      cleanPoints: 0,
       estimatedWeightKg: parseInt(reportData.estimatedWeightKg) || 0,
       deadline: '8 hours',
-      status: 'open',
+      status: 'pending_bounty',
       reportedBy: user.name,
       reportedById: user.id,
       reportedAt: 'Just now',
@@ -362,11 +370,46 @@ class StateManager {
     return newCommission;
   }
 
+  assignBounty(id, amountPhp) {
+    const comm = this.getCommissionById(id);
+    const user = this.getUser();
+    const amount = Number(amountPhp);
+
+    if (!comm || !user || user.role !== 'verifier') return false;
+    if (comm.status !== 'pending_bounty') return false;
+    if (!Number.isFinite(amount) || amount <= 0) return false;
+
+    comm.rewardPhp = Math.round(amount * 100) / 100;
+    comm.cleanPoints = Math.round(comm.rewardPhp * 1.6);
+    comm.bountyStatus = 'assigned';
+    comm.bountyAssignedBy = user.name;
+    comm.bountyAssignedById = user.id;
+    comm.bountyAssignedAt = 'Just now';
+    comm.status = 'open';
+
+    firestore.collection('reports').doc(comm.id).update({
+      rewardPhp: comm.rewardPhp,
+      cleanPoints: comm.cleanPoints,
+      bountyStatus: comm.bountyStatus,
+      bountyAssignedBy: comm.bountyAssignedBy,
+      bountyAssignedById: comm.bountyAssignedById,
+      bountyAssignedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      status: comm.status
+    }).catch(err => {
+      console.error('Could not assign bounty:', err.code || err.message || err);
+      window.showToast?.('Could not save the reward assignment to Firebase.', 'error');
+    });
+
+    this.emit('bountyAssigned', comm);
+    this.emit('stateChanged');
+    return true;
+  }
+
   claimCommission(id) {
     const comm = this.getCommissionById(id);
     const user = this.getUser();
 
-    if (!comm || comm.status !== 'open' || !user) return false;
+    if (!comm || comm.status !== 'open' || !user || Number(comm.rewardPhp) <= 0) return false;
 
     comm.status = 'in_progress';
     comm.assignedTo = user.name;
