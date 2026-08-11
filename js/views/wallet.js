@@ -80,46 +80,27 @@ window.WalletView = {
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 8px;">
-              
-              <!-- Rank 1 -->
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-sm); background: #fef3c7; border: 1px solid #fde68a;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <span style="font-weight: 800; font-size: 1.1rem; color: #b45309;">🥇 #1</span>
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />
-                  <div>
-                    <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a;">Eduardo Ramos</div>
-                    <div style="font-size: 0.7rem; color: #64748b;">Barangay Puro • 52 Cleans</div>
+              ${window.appState.getAllUsersList()
+                .filter(u => u.role === 'cleaner')
+                .sort((a, b) => Number(b.stats?.completedCleans || 0) - Number(a.stats?.completedCleans || 0))
+                .slice(0, 10)
+                .map((u, index) => `
+                  <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-sm); background: ${u.id === user.id ? '#ecfdf5' : '#f8fafc'}; border: 1px solid ${u.id === user.id ? '#a7f3d0' : '#e2e8f0'};">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span style="font-weight: 800; font-size: 1rem; color: ${index === 0 ? '#b45309' : '#64748b'};">#${index + 1}</span>
+                      <img src="${u.avatar}" alt="${u.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />
+                      <div>
+                        <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a;">${u.name}${u.id === user.id ? ' (You)' : ''}</div>
+                        <div style="font-size: 0.7rem; color: #64748b;">${u.barangay || 'Barangay not set'} • ${u.stats.completedCleans || 0} Cleans</div>
+                      </div>
+                    </div>
+                    <div class="font-mono" style="font-weight: 800; color: ${u.id === user.id ? 'var(--emerald-700)' : '#475569'}; font-size: 0.9rem;">₱${Number(u.phpBalance || 0).toFixed(0)}</div>
                   </div>
-                </div>
-                <div class="font-mono" style="font-weight: 800; color: #b45309; font-size: 0.9rem;">₱18,450</div>
-              </div>
-
-              <!-- Rank 2 -->
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-sm); background: #ecfdf5; border: 1px solid #a7f3d0;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <span style="font-weight: 800; font-size: 1.1rem; color: var(--emerald-700);">🥈 #2</span>
-                  <img src="${user.avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--emerald-500);" />
-                  <div>
-                    <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a;">${user.name} (You)</div>
-                    <div style="font-size: 0.7rem; color: var(--emerald-700);">${user.barangay.split(',')[0]} • ${user.stats.completedCleans} Cleans</div>
+                `).join('') || `
+                  <div style="padding: 1rem; text-align: center; color: #64748b; font-size: 0.8rem;">
+                    No cleaner accounts yet.
                   </div>
-                </div>
-                <div class="font-mono" style="font-weight: 800; color: var(--emerald-700); font-size: 0.9rem;">₱${user.phpBalance.toFixed(0)}</div>
-              </div>
-
-              <!-- Rank 3 -->
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-sm); background: #f8fafc; border: 1px solid #e2e8f0;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <span style="font-weight: 800; font-size: 1.1rem; color: #94a3b8;">🥉 #3</span>
-                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />
-                  <div>
-                    <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a;">Teresa Morales</div>
-                    <div style="font-size: 0.7rem; color: #64748b;">Barangay Bitano • 38 Cleans</div>
-                  </div>
-                </div>
-                <div class="font-mono" style="font-weight: 800; color: #475569; font-size: 0.9rem;">₱12,800</div>
-              </div>
-
+                `}
             </div>
           </div>
 
@@ -183,8 +164,8 @@ window.WalletView = {
         <div class="form-group">
           <label class="form-label">Payout Channel</label>
           <select class="form-control" id="withdraw-provider">
-            <option value="GCash">GCash (0928-551-3941 - Maria Bataller)</option>
-            <option value="Maya">Maya (0917-882-1920)</option>
+            <option value="GCash" ${user.payoutProvider === 'GCash' ? 'selected' : ''}>GCash${user.payoutProvider === 'GCash' && user.payoutAccount ? ` (${user.payoutAccount})` : ''}</option>
+            <option value="Maya" ${user.payoutProvider === 'Maya' ? 'selected' : ''}>Maya${user.payoutProvider === 'Maya' && user.payoutAccount ? ` (${user.payoutAccount})` : ''}</option>
             <option value="LandBank">LandBank PesoNet</option>
           </select>
         </div>

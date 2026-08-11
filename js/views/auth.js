@@ -14,9 +14,9 @@ window.AuthView = {
   formData: {
     name: '',
     email: '',
-    password: 'password123',
-    barangay: 'Barangay Albay District, Legazpi City',
-    phone: '0917-555-1234'
+    password: '',
+    barangay: '',
+    phone: ''
   },
 
   avatarPresets: [
@@ -28,7 +28,6 @@ window.AuthView = {
   ],
 
   render() {
-    const allUsers = window.appState.getAllUsersList();
     const currentUser = window.appState.getUser();
 
     return `
@@ -61,32 +60,32 @@ window.AuthView = {
             </div>
           </div>
 
-          ${this.activeTab === 'login' ? this.renderLogin(allUsers, currentUser) : this.renderRegister()}
+          ${this.activeTab === 'login' ? this.renderLogin(currentUser) : this.renderRegister()}
 
         </div>
       </div>
     `;
   },
 
-  renderLogin(allUsers, currentUser) {
+  renderLogin(currentUser) {
     return `
       <div class="card" style="padding: 1.5rem; background: #ffffff;">
         
         <!-- Credential Sign In Form -->
         <h2 style="font-size: 1.05rem; margin-bottom: 4px; color: #0f172a;">Account Sign In</h2>
         <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.25rem;">
-          Enter your registered email or mobile number:
+          Enter the email address you registered with:
         </p>
 
         <form onsubmit="event.preventDefault(); window.AuthView.handleLogin();">
           <div class="form-group">
             <label class="form-label">Email or Mobile Number</label>
-             <input type="text" class="form-control" id="login-identifier" placeholder="e.g. maria@clean.ph or 09285513941" value="${currentUser ? currentUser.email : ''}" required />
+             <input type="text" class="form-control" id="login-identifier" placeholder="e.g. maria@example.com" value="${currentUser ? currentUser.email : ''}" required />
           </div>
 
           <div class="form-group">
             <label class="form-label">Password</label>
-            <input type="password" class="form-control" id="login-password" placeholder="••••••••" value="password123" required />
+            <input type="password" class="form-control" id="login-password" placeholder="••••••••" value="${this.formData.password}" required />
           </div>
 
           <button type="submit" class="btn btn-primary btn-block" style="margin-top: 0.5rem; margin-bottom: 1.5rem;">
@@ -94,32 +93,6 @@ window.AuthView = {
           </button>
         </form>
 
-        <!-- Registered Accounts Quick Switcher -->
-        <div style="border-top: 1px solid #f1f5f9; padding-top: 1.25rem;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-            <h3 style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">
-              <i class="fa-solid fa-users" style="color: var(--emerald-600);"></i> Saved Registered Accounts (${allUsers.length})
-            </h3>
-            <span style="font-size: 0.7rem; color: #b45309; font-weight: 700;">1-Click Switch</span>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
-            ${allUsers.map(u => `
-              <div class="card ${currentUser && currentUser.id === u.id ? 'card-gold-glow' : ''}" style="padding: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0;" onclick="window.switchUser('${u.id}')">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <img src="${u.avatar}" style="width: 38px; height: 38px; border-radius: var(--radius-full); object-fit: cover; border: 2px solid ${u.role === 'cleaner' ? 'var(--emerald-500)' : (u.role === 'resident' ? '#0ea5e9' : 'var(--gold-500)')};" />
-                  <div>
-                    <div style="font-weight: 800; font-size: 0.88rem; color: #0f172a;">${u.name}</div>
-                    <div style="font-size: 0.7rem; color: #64748b;">
-                      <span style="text-transform: capitalize; font-weight: 700; color: ${u.role === 'cleaner' ? 'var(--emerald-700)' : (u.role === 'resident' ? '#0284c7' : '#b45309')};">${u.role}</span> • ${u.barangay.split(',')[0]}
-                    </div>
-                  </div>
-                </div>
-                ${currentUser && currentUser.id === u.id ? '<span class="status-badge status-completed"><i class="fa-solid fa-check"></i> Active</span>' : '<button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 0.72rem;">Switch</button>'}
-              </div>
-            `).join('')}
-          </div>
-        </div>
 
       </div>
     `;
@@ -388,13 +361,13 @@ window.AuthView = {
     if (livePhone !== undefined) this.formData.phone = livePhone;
 
     const rawName = this.formData.name || '';
-    const email = this.formData.email || `user_${Date.now()}@clean.ph`;
-    const password = this.formData.password || 'password123';
-    const barangay = this.formData.barangay || 'Barangay Albay District, Legazpi City';
-    const phone = this.formData.phone || '0917-000-0000';
+    const email = this.formData.email.trim();
+    const password = this.formData.password;
+    const barangay = this.formData.barangay || '';
+    const phone = this.formData.phone || '';
 
-    if (!rawName.trim()) {
-      window.showToast('Please enter your legal name.', 'error');
+    if (!rawName.trim() || !email || !password) {
+      window.showToast('Please complete your name, email, and password.', 'error');
       this.registerStep = 2;
       window.renderRoute();
       return;
@@ -418,7 +391,7 @@ window.AuthView = {
       window.soundSystem.success();
       window.showToast(`Account created for ${result.user.name}! Welcome to Ibalong 2026.`, 'success');
       this.registerStep = 1;
-      this.formData = { name: '', email: '', password: 'password123', barangay: 'Barangay Albay District, Legazpi City', phone: '0917-555-1234' };
+      this.formData = { name: '', email: '', password: '', barangay: '', phone: '' };
       window.location.hash = '#/dashboard';
     } else {
       window.showToast(result.message, 'error');

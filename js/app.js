@@ -207,17 +207,6 @@ window.logoutUser = async () => {
   }
 };
 
-// Quick Switch User Account
-window.switchUser = (userId) => {
-  const success = window.appState.switchUser(userId);
-  if (success) {
-    window.soundSystem.success();
-    const user = window.appState.getUser();
-    window.showToast(`Signed in as ${user.name} (${user.role.toUpperCase()})`, 'success');
-    window.renderRoute();
-  }
-};
-
 // Toggle Mobile Frame Preview Simulation Mode
 window.toggleMobileFrame = () => {
   document.body.classList.toggle('mode-mobile-frame');
@@ -437,48 +426,23 @@ window.submitProofAction = (id) => {
   }
 };
 
-// Initial App Boot — wait for Firebase to confirm the real session first
+// Initial App Boot — Firebase Auth decides the session, then Firestore
+// loads the user's profile, reports, and transactions before the app renders.
 window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('hashchange', window.renderRoute);
 
-  auth.onAuthStateChanged((firebaseUser) => {
-    if (firebaseUser) {
-      // Real session confirmed. Rebuild a minimal local profile if this
-      // browser doesn't have one yet (e.g. localStorage was cleared).
-      if (!window.appState.users[firebaseUser.uid]) {
-        window.appState.users[firebaseUser.uid] = {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-          email: firebaseUser.email,
-          role: 'cleaner',
-          roleTitle: 'Ibalong Eco-Warrior & Clean Specialist',
-          badgeLevel: 'Legazpi Active Member',
-          barangay: 'Barangay Albay District, Legazpi City',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
-          phone: '0917-000-0000',
-          payoutProvider: 'GCash',
-          payoutAccount: '0917-000-0000',
-          phpBalance: 500.00,
-          cleanPoints: 250,
-          stakedPoints: 0,
-          escrowLockedPhp: 0.00,
-          createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-          stats: { completedCleans: 0, kgRecycled: 0, verificationRate: 100.0, festivalRank: 'New Eco-Warrior', hoursContributed: 0 },
-          badges: [],
-          gear: []
-        };
-      }
-      window.appState.currentUserId = firebaseUser.uid;
-      window.appState.save();
+  auth.onAuthStateChanged(async (firebaseUser) => {
+    await window.appState.initializeForFirebaseUser(firebaseUser);
 
+    if (firebaseUser) {
       const h = window.location.hash;
       if (!h || h.startsWith('#/auth') || h.startsWith('#/login') || h.startsWith('#/register')) {
         window.location.hash = '#/';
       }
     } else {
-      window.appState.currentUserId = null;
       window.location.hash = '#/auth';
     }
+
     window.renderRoute();
   });
 });

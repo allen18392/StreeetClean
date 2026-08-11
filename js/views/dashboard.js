@@ -6,6 +6,16 @@
 window.DashboardView = {
   render() {
     const user = window.appState.getUser();
+    const reports = window.appState.getCommissions('all');
+    const completed = reports.filter(r => r.status === 'completed');
+    const totalBounties = completed.reduce((sum, r) => sum + Number(r.rewardPhp || 0), 0);
+    const wasteDiverted = completed.reduce((sum, r) => sum + Number(r.proofData?.weightRecordedKg || r.estimatedWeightKg || 0), 0);
+    const cleanlinessScores = completed.map(r => Number(r.proofData?.aiCleanlinessScore)).filter(Number.isFinite);
+    const cleanlinessScore = cleanlinessScores.length ? cleanlinessScores.reduce((a,b) => a+b, 0) / cleanlinessScores.length : 0;
+    const sectorStats = {};
+    completed.forEach(r => { const key = r.sector || 'Unspecified'; sectorStats[key] = (sectorStats[key] || 0) + Number(r.proofData?.weightRecordedKg || r.estimatedWeightKg || 0); });
+    const materialStats = {};
+    completed.forEach(r => { const key = r.category || 'Unspecified'; materialStats[key] = (materialStats[key] || 0) + Number(r.proofData?.weightRecordedKg || r.estimatedWeightKg || 0); });
 
     return `
       <div class="dashboard-view animate-fade-in" style="padding: 1rem 0 2.5rem 0;">
@@ -26,25 +36,25 @@ window.DashboardView = {
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1.25rem;">
             <div class="card" style="padding: 1rem; text-align: center; background: #ffffff;">
               <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Total Bounties Paid</div>
-              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #b45309; margin-top: 4px;">₱64,850</div>
+              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #b45309; margin-top: 4px;">₱${totalBounties.toLocaleString()}</div>
               <div style="font-size: 0.65rem; color: var(--emerald-700);">Paid via GCash/Maya</div>
             </div>
 
             <div class="card" style="padding: 1rem; text-align: center; background: #ffffff;">
               <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Waste Diverted</div>
-              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: var(--emerald-600); margin-top: 4px;">1,420 kg</div>
+              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: var(--emerald-600); margin-top: 4px;">${wasteDiverted.toLocaleString()} kg</div>
               <div style="font-size: 0.65rem; color: var(--emerald-700);">Sent to Legazpi MRF</div>
             </div>
 
             <div class="card" style="padding: 1rem; text-align: center; background: #ffffff;">
               <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Avg. Turnaround</div>
-              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #0284c7; margin-top: 4px;">58 mins</div>
+              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #0284c7; margin-top: 4px;">—</div>
               <div style="font-size: 0.65rem; color: #0369a1;">Spot-to-Clean Time</div>
             </div>
 
             <div class="card" style="padding: 1rem; text-align: center; background: #ffffff;">
               <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Cleanliness Score</div>
-              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: var(--emerald-600); margin-top: 4px;">99.4%</div>
+              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: var(--emerald-600); margin-top: 4px;">${cleanlinessScore ? cleanlinessScore.toFixed(1) : '—'}%</div>
               <div style="font-size: 0.65rem; color: var(--emerald-700);">LGU Audit Verified</div>
             </div>
           </div>
@@ -77,21 +87,29 @@ window.DashboardView = {
           <!-- Legazpi Barangay Cleanliness Ranking -->
           <div class="card" style="padding: 1.25rem; background: #ffffff;">
             <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.75rem; color: #0f172a;">
-              <i class="fa-solid fa-medal" style="color: #b45309;"></i> Top Legazpi Barangay Cleanliness Ratings
+              <i class="fa-solid fa-medal" style="color: #b45309;"></i> Legazpi Barangay Cleanliness Ratings
             </h3>
             <div style="display: flex; flex-direction: column; gap: 8px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-sm);">
-                <span style="font-weight: 600; color: #0f172a;">1. Barangay Albay District (Peñaranda Park)</span>
-                <span class="font-mono" style="color: var(--emerald-600); font-weight: 800;">99.8% Clean</span>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-sm);">
-                <span style="font-weight: 600; color: #0f172a;">2. Barangay Bitano (Astrodome)</span>
-                <span class="font-mono" style="color: var(--emerald-600); font-weight: 800;">99.2% Clean</span>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-sm);">
-                <span style="font-weight: 600; color: #0f172a;">3. Barangay Puro (Legazpi Boulevard)</span>
-                <span class="font-mono" style="color: #b45309; font-weight: 800;">98.6% Clean</span>
-              </div>
+              ${Object.entries(completed.reduce((acc, r) => {
+                const key = r.address || r.sector || 'Unspecified';
+                const score = Number(r.proofData?.aiCleanlinessScore);
+                if (!acc[key]) acc[key] = [];
+                if (Number.isFinite(score)) acc[key].push(score);
+                return acc;
+              }, {}))
+              .map(([location, scores]) => ({ location, score: scores.length ? scores.reduce((a,b) => a+b,0)/scores.length : 0 }))
+              .sort((a,b) => b.score-a.score)
+              .slice(0, 10)
+              .map((item, index) => `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-sm);">
+                  <span style="font-weight: 600; color: #0f172a;">${index + 1}. ${item.location}</span>
+                  <span class="font-mono" style="color: var(--emerald-600); font-weight: 800;">${item.score ? item.score.toFixed(1) + '% Clean' : 'No score'}</span>
+                </div>
+              `).join('') || `
+                <div style="padding: 1rem; text-align: center; color: #64748b; font-size: 0.8rem;">
+                  No completed cleanup data yet.
+                </div>
+              `}
             </div>
           </div>
 
@@ -110,10 +128,10 @@ window.DashboardView = {
       window.sectorChartInstance = new Chart(ctx1, {
         type: 'bar',
         data: {
-          labels: ['Peñaranda', 'Boulevard', 'Astrodome', 'Embarcadero', 'Sawangan'],
+          labels: Object.keys(window.appState.getCommissions('all').filter(r => r.status === 'completed').reduce((acc, r) => { const k = r.sector || 'Unspecified'; acc[k] = true; return acc; }, {})),
           datasets: [{
             label: 'kg Diverted',
-            data: [420, 380, 290, 210, 120],
+            data: Object.values(window.appState.getCommissions('all').filter(r => r.status === 'completed').reduce((acc, r) => { const k = r.sector || 'Unspecified'; acc[k] = (acc[k] || 0) + Number(r.proofData?.weightRecordedKg || r.estimatedWeightKg || 0); return acc; }, {})),
             backgroundColor: 'rgba(16, 185, 129, 0.85)',
             borderColor: '#059669',
             borderWidth: 1.5,
@@ -147,9 +165,9 @@ window.DashboardView = {
       window.materialChartInstance = new Chart(ctx2, {
         type: 'doughnut',
         data: {
-          labels: ['Plastics & Cups', 'Food & Skewers', 'Paraphernalia', 'Glass', 'Organic'],
+          labels: Object.keys(window.appState.getCommissions('all').filter(r => r.status === 'completed').reduce((acc, r) => { const k = r.category || 'Unspecified'; acc[k] = true; return acc; }, {})),
           datasets: [{
-            data: [48, 24, 14, 8, 6],
+            data: Object.values(window.appState.getCommissions('all').filter(r => r.status === 'completed').reduce((acc, r) => { const k = r.category || 'Unspecified'; acc[k] = (acc[k] || 0) + Number(r.proofData?.weightRecordedKg || r.estimatedWeightKg || 0); return acc; }, {})),
             backgroundColor: [
               '#059669',
               '#f59e0b',
