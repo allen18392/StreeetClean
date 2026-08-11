@@ -192,13 +192,14 @@ window.ReportView = {
           Upload clear before photos of the litter pile and assign a reward.
         </p>
 
-        <!-- Photo Upload Simulator -->
+        <!-- Photo Upload -->
         <div class="form-group">
           <label class="form-label">Hotspot Photo Evidence</label>
-          <div class="upload-dropzone" onclick="window.ReportView.triggerCamera()">
-            <i class="fa-solid fa-camera upload-icon"></i>
-            <div style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">Tap to Snap Photo or Choose Preset</div>
-            <div style="font-size: 0.72rem; color: #64748b;">GPS metadata & timestamp automatically stamped</div>
+          <input type="file" accept="image/*" id="report-photo-input" style="display: none;" onchange="window.ReportView.handlePhotoUpload(event)" />
+          <div class="upload-dropzone" onclick="document.getElementById('report-photo-input').click()">
+            <img src="${this.formData.imageUrl}" alt="Selected hotspot photo" style="width: 100%; max-height: 140px; object-fit: cover; border-radius: var(--radius-md); margin-bottom: 6px;" />
+            <div style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">Tap to Upload a Photo</div>
+            <div style="font-size: 0.72rem; color: #64748b;">JPG/PNG — resized automatically before saving</div>
           </div>
 
           <div class="upload-preset-gallery">
@@ -318,8 +319,17 @@ window.ReportView = {
     if (el) el.innerText = `₱${val}`;
   },
 
-  triggerCamera() {
-    window.showToast('Camera snapshot taken & GPS tagged: Peñaranda Festival Zone.', 'success');
+  async handlePhotoUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    try {
+      window.showToast('Processing photo...', 'success');
+      this.formData.imageUrl = await window.compressImageToDataUrl(file);
+      window.renderRoute();
+    } catch (err) {
+      window.showToast(err.message || 'Could not process that photo.', 'error');
+    }
   },
 
   useCurrentGps() {

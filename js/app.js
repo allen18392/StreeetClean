@@ -3,6 +3,46 @@
  * Main Application Orchestrator & Client-Side SPA Router (White & Green Theme)
  */
 
+// Reads an image file chosen by the user and downsizes it into a small
+// JPEG data URL. We store photos directly on the Firestore document
+// (imageBefore / imageAfter) instead of Firebase Cloud Storage, since
+// Storage now requires the paid Blaze plan. Firestore documents are
+// capped at 1MiB, so we keep each photo modest (~640px wide, 60%
+// quality) to leave plenty of room for the rest of the report data.
+window.compressImageToDataUrl = (file, maxDimension = 640, quality = 0.6) => {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      reject(new Error('Please choose an image file.'));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Could not load that image.'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxDimension) {
+          height = Math.round(height * (maxDimension / width));
+          width = maxDimension;
+        } else if (height >= width && height > maxDimension) {
+          width = Math.round(width * (maxDimension / height));
+          height = maxDimension;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 // Central Route Mapper
 window.renderRoute = () => {
   const hash = window.location.hash || '#/';
@@ -369,6 +409,9 @@ window.openSubmitProofForm = (id) => {
   const comm = window.appState.getCommissionById(id);
   if (!comm) return;
 
+  // Cleared/refilled by handleProofPhotoUpload() below as the modal is used.
+  window.proofPhotoDataUrl = null;
+
   const modalHtml = `
     <div class="modal-card">
       <button class="modal-close-btn" onclick="window.closeModal()"><i class="fa-solid fa-xmark"></i></button>
@@ -384,9 +427,10 @@ window.openSubmitProofForm = (id) => {
 
       <div class="form-group">
         <label class="form-label">After-Cleanup Photo</label>
-        <div class="upload-dropzone" onclick="window.showToast('After Photo snapshot attached!', 'success')">
+        <input type="file" accept="image/*" id="proof-photo-input" style="display: none;" onchange="window.handleProofPhotoUpload(event)" />
+        <div class="upload-dropzone" id="proof-photo-dropzone" onclick="document.getElementById('proof-photo-input').click()">
           <div class="upload-icon"><i class="fa-solid fa-camera"></i></div>
-          <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Tap to Snap Pristine Site Photo</div>
+          <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a;" id="proof-photo-label">Tap to Upload Pristine Site Photo</div>
           <div style="font-size: 0.72rem; color: #64748b;">EXIF timestamp will be verified by LGU</div>
         </div>
       </div>
@@ -415,21 +459,46 @@ window.openSubmitProofForm = (id) => {
   window.openModal(modalHtml);
 };
 
+// Handles the after-cleanup photo picked in the submit-proof modal —
+// compresses it and stashes it for submitProofAction() to use.
+window.handleProofPhotoUpload = async (event) => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  try {
+    window.showToast('Processing photo...', 'success');
+    window.proofPhotoDataUrl = await window.compressImageToDataUrl(file);
+
+    const label = document.getElementById('proof-photo-label');
+    if (label) label.innerText = 'Photo attached ✓ — tap to change';
+    const dropzone = document.getElementById('proof-photo-dropzone');
+    if (dropzone) dropzone.style.borderColor = 'var(--emerald-600)';
+  } catch (err) {
+    window.showToast(err.message || 'Could not process that photo.', 'error');
+  }
+};
+
 window.submitProofAction = (id) => {
   const weight = document.getElementById('proof-weight')?.value || 30;
   const manifest = document.getElementById('proof-manifest')?.value || 'LGU-MRF-2026-092';
   const notes = document.getElementById('proof-notes')?.value || '';
 
+  if (!window.proofPhotoDataUrl) {
+    window.showToast('Please attach an after-cleanup photo first.', 'error');
+    return;
+  }
+
   const success = window.appState.submitProof(id, {
     weightKg: weight,
     manifestId: manifest,
     notes: notes,
-    imageAfter: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80'
+    imageAfter: window.proofPhotoDataUrl
   });
 
   if (success) {
     window.soundSystem.success();
     window.closeModal();
+    window.proofPhotoDataUrl = null;
     window.showToast('Proof submitted! Verifiers have been notified for audit.', 'success');
     window.renderRoute();
   }
