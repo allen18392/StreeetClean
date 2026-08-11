@@ -67,7 +67,7 @@ window.VerifyView = {
           <!-- Recently Verified History -->
           <div>
             <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.75rem; color: #0f172a;">
-              <i class="fa-solid fa-clock-rotate-left" style="color: var(--emerald-600);"></i> Recently Verified & Escrow Released
+              <i class="fa-solid fa-clock-rotate-left" style="color: var(--emerald-600);"></i> Recently Verified & Rewarded
             </h3>
             <div style="display: flex; flex-direction: column; gap: 10px;">
               ${completedCleans.map(c => `
@@ -207,8 +207,8 @@ window.VerifyView = {
   approveProof(id) {
     const success = window.appState.verifyProof(id, true);
     if (success) {
-      window.soundSystem.success();
-      window.showToast('Escrow Payout Approved! ₱ Bounty & Clean Points released to cleaner.', 'gold');
+      window.soundSystem.fanfare();
+      window.showToast('Cleanup Approved! ₱ Bounty & Clean Points released to cleaner.', 'gold');
       window.renderRoute();
     }
   },

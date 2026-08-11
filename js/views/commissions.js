@@ -35,10 +35,6 @@ window.CommissionsView = {
                 <div style="font-size: 0.68rem; color: #64748b; font-weight: 600;">Available Balance</div>
                 <div class="font-mono" style="font-size: 1.15rem; font-weight: 800; color: #b45309;">₱${user.phpBalance.toFixed(2)}</div>
               </div>
-              <div style="border-left: 1px solid #e2e8f0; padding-left: 14px;">
-                <div style="font-size: 0.68rem; color: #64748b; font-weight: 600;">Locked Escrow</div>
-                <div class="font-mono" style="font-size: 1.15rem; font-weight: 800; color: #0284c7;">₱${user.escrowLockedPhp.toFixed(2)}</div>
-              </div>
             </div>
           </div>
 

@@ -8,7 +8,7 @@ StreetClean now uses Firebase for application data.
 - Cloud Firestore:
   - `users/{uid}` — profile, wallet balance, points, role and impact stats.
   - `reports/{reportId}` — community reports, cleanup assignments and proof/verification data.
-  - `users/{uid}/transactions/{transactionId}` — wallet pledges, payouts and withdrawals.
+  - `users/{uid}/transactions/{transactionId}` — payouts and withdrawals.
 - Firebase Storage is not required by the current MVP. Report photos continue to use the existing image URLs/presets.
 
 ## Firestore rules

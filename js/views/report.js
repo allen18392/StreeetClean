@@ -16,8 +16,8 @@ window.ReportView = {
     rewardPhp: 500,
     estimatedWeightKg: 25,
     description: '',
-    fundingSource: 'civic_pool',
-    imageUrl: 'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=800&q=80'
+    imageUrl: 'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=800&q=80',
+    imageFile: null
   },
 
   render() {
@@ -34,7 +34,7 @@ window.ReportView = {
             </div>
             <h1 style="font-size: 1.4rem; font-weight: 800; margin-top: 6px; color: #0f172a;">Report Litter Hotspot</h1>
             <p style="font-size: 0.82rem; color: #64748b;">
-              Pin festival litter in Legazpi City, pledge a ₱ bounty, and alert local cleaners.
+              Pin festival litter in Legazpi City, set a cleanup reward, and alert local cleaners.
             </p>
           </div>
 
@@ -192,15 +192,26 @@ window.ReportView = {
           Upload clear before photos of the litter pile and assign a reward.
         </p>
 
-        <!-- Photo Upload -->
+        <!-- Real Photo Upload -->
         <div class="form-group">
           <label class="form-label">Hotspot Photo Evidence</label>
-          <input type="file" accept="image/*" id="report-photo-input" style="display: none;" onchange="window.ReportView.handlePhotoUpload(event)" />
-          <div class="upload-dropzone" onclick="document.getElementById('report-photo-input').click()">
-            <img src="${this.formData.imageUrl}" alt="Selected hotspot photo" style="width: 100%; max-height: 140px; object-fit: cover; border-radius: var(--radius-md); margin-bottom: 6px;" />
-            <div style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">Tap to Upload a Photo</div>
-            <div style="font-size: 0.72rem; color: #64748b;">JPG/PNG — resized automatically before saving</div>
-          </div>
+          <input id="report-photo-input" type="file" accept="image/*" capture="environment" style="display:none" onchange="window.ReportView.handlePhotoUpload(this)">
+          <button type="button" class="upload-dropzone" style="width:100%; border:0; cursor:pointer;" onclick="document.getElementById('report-photo-input').click()">
+            <i class="fa-solid fa-camera upload-icon"></i>
+            <div style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">Take Photo or Choose From Device</div>
+            <div style="font-size: 0.72rem; color: #64748b;">JPG, PNG, WEBP • maximum 10 MB</div>
+          </button>
+
+          ${this.formData.imageFile ? `
+            <div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#f0fdf4; padding:10px; border-radius:12px; border:1px solid #bbf7d0;">
+              <img src="${URL.createObjectURL(this.formData.imageFile)}" alt="Selected report" style="width:64px;height:64px;object-fit:cover;border-radius:10px;">
+              <div style="min-width:0; flex:1;">
+                <div style="font-size:.78rem;font-weight:800;color:#0f172a;">${this.formData.imageFile.name}</div>
+                <div style="font-size:.7rem;color:#64748b;">Ready to upload when you publish</div>
+              </div>
+              <button type="button" class="btn btn-secondary" style="padding:7px 10px;" onclick="window.ReportView.clearPhoto()">Remove</button>
+            </div>
+          ` : ''}
 
           <div class="upload-preset-gallery">
             <div class="upload-preset-thumb ${this.formData.imageUrl.includes('618477461853') ? 'active' : ''}" onclick="window.ReportView.setPhoto('https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=800&q=80')">
@@ -226,21 +237,6 @@ window.ReportView = {
             <span>₱300 (Standard)</span>
             <span>₱1,200 (Large Arena)</span>
             <span>₱2,500 (Heavy)</span>
-          </div>
-        </div>
-
-        <!-- Funding Source Selector -->
-        <div class="form-group">
-          <label class="form-label">Funding Source</label>
-          <div style="display: flex; gap: 8px;">
-            <div class="card ${this.formData.fundingSource === 'civic_pool' ? 'card-gold-glow' : ''}" style="flex: 1; padding: 10px; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0;" onclick="window.ReportView.setFunding('civic_pool')">
-              <div style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">🏛️ City Clean Fund</div>
-              <div style="font-size: 0.7rem; color: var(--emerald-700);">LGU Sponsored</div>
-            </div>
-            <div class="card ${this.formData.fundingSource === 'wallet' ? 'card-gold-glow' : ''}" style="flex: 1; padding: 10px; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0;" onclick="window.ReportView.setFunding('wallet')">
-              <div style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">💳 My Civic Wallet</div>
-              <div style="font-size: 0.7rem; color: #b45309;">Bal: ₱${user.phpBalance.toFixed(0)}</div>
-            </div>
           </div>
         </div>
 
@@ -303,15 +299,34 @@ window.ReportView = {
     window.renderRoute();
   },
 
+  async handlePhotoUpload(input) {
+    const file = input?.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      window.showToast('Please choose an image file.', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      window.showToast('Image must be 10 MB or smaller.', 'error');
+      return;
+    }
+    this.formData.imageFile = file;
+    this.formData.imageUrl = '';
+    window.renderRoute();
+  },
+
+  clearPhoto() {
+    this.formData.imageFile = null;
+    this.formData.imageUrl = 'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=800&q=80';
+    window.renderRoute();
+  },
+
   setPhoto(url) {
+    this.formData.imageFile = null;
     this.formData.imageUrl = url;
     window.renderRoute();
   },
 
-  setFunding(source) {
-    this.formData.fundingSource = source;
-    window.renderRoute();
-  },
 
   updateBountyDisplay(val) {
     this.formData.rewardPhp = parseFloat(val);
@@ -339,25 +354,51 @@ window.ReportView = {
     window.renderRoute();
   },
 
-  submitReport() {
-    const newReport = window.appState.addReport({
-      title: `${this.formData.category} at ${this.formData.sector.split('&')[0]}`,
-      sector: this.formData.sector,
-      address: this.formData.address,
-      lat: this.formData.lat,
-      lng: this.formData.lng,
-      category: this.formData.category,
-      severity: this.formData.severity,
-      rewardPhp: this.formData.rewardPhp,
-      estimatedWeightKg: this.formData.estimatedWeightKg,
-      description: this.formData.description || `Reported ${this.formData.category} during festival festivities.`,
-      fundingSource: this.formData.fundingSource,
-      imageUrl: this.formData.imageUrl
-    });
+  async submitReport() {
+    const user = window.appState.getUser();
+    if (!user) {
+      window.showToast('Please sign in before submitting a report.', 'error');
+      return;
+    }
 
-    window.soundSystem.success();
-    window.showToast(`Hotspot ${newReport.id} successfully published! Bounties unlocked for cleaners.`, 'success');
-    this.currentStep = 1;
-    window.location.hash = '#/commissions';
+    const publishButton = document.querySelector('.report-view .btn-primary:last-child');
+    if (publishButton) {
+      publishButton.disabled = true;
+      publishButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+    }
+
+    try {
+      let imageUrl = this.formData.imageUrl || null;
+      if (this.formData.imageFile) {
+        imageUrl = await window.uploadImageFile(this.formData.imageFile);
+      }
+
+      const newReport = window.appState.addReport({
+        title: `${this.formData.category} at ${this.formData.sector.split('&')[0]}`,
+        sector: this.formData.sector,
+        address: this.formData.address,
+        lat: this.formData.lat,
+        lng: this.formData.lng,
+        category: this.formData.category,
+        severity: this.formData.severity,
+        rewardPhp: this.formData.rewardPhp,
+        estimatedWeightKg: this.formData.estimatedWeightKg,
+        description: this.formData.description || `Reported ${this.formData.category} during festival festivities.`,
+        imageUrl
+      });
+
+      window.soundSystem.success();
+      window.showToast(`Hotspot ${newReport.id} successfully published!`, 'success');
+      this.currentStep = 1;
+      this.formData.imageFile = null;
+      window.location.hash = '#/commissions';
+    } catch (err) {
+      console.error('Report photo upload failed:', err);
+      window.showToast(err.message || 'Could not upload the report photo.', 'error');
+      if (publishButton) {
+        publishButton.disabled = false;
+        publishButton.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Report';
+      }
+    }
   }
 };
