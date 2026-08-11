@@ -1,9 +1,16 @@
 /**
  * StreetClean | Firebase-backed application state
+ * (Simplified for demo/presentation reliability.)
  *
  * Firebase Authentication owns identity/session.
  * Firestore owns profiles, reports and transactions.
  * No application data is stored in localStorage.
+ *
+ * Design rule for this rewrite: a successful sign-in must always land the
+ * user on the dashboard. Loading the user's OWN profile is the only thing
+ * allowed to block login. Everything else (leaderboard, reports feed,
+ * transaction history) loads in parallel afterward and fails silently
+ * (with a toast) if Firestore hiccups, instead of taking the whole app down.
  */
 
 function humanizeFirebaseError(err) {
@@ -14,7 +21,8 @@ function humanizeFirebaseError(err) {
     'auth/user-not-found': 'No account found with this email.',
     'auth/wrong-password': 'Incorrect password. Please try again.',
     'auth/invalid-credential': 'Incorrect email or password.',
-    'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.'
+    'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+    'permission-denied': 'Firebase denied that request. Check your Firestore rules.'
   };
   return map[err.code] || err.message || 'Firebase request failed.';
 }
@@ -69,9 +77,9 @@ class StateManager {
     this.ready = false;
   }
 
-  async initializeForFirebaseUser(firebaseUser) {
-    this.ready = false;
+  // ---- Boot / session -----------------------------------------------
 
+  async initializeForFirebaseUser(firebaseUser) {
     if (!firebaseUser) {
       this.currentUserId = null;
       this.users = {};
@@ -85,57 +93,84 @@ class StateManager {
 
     this.currentUserId = firebaseUser.uid;
 
+    // Step 1 (blocking): load or create the signed-in user's own profile.
+    // This is the ONLY step allowed to fail the login.
+    const user = await this._loadOrCreateOwnProfile(firebaseUser);
+    this.users[user.id] = user;
+    this.ready = true;
+    this.emit('userChanged', user);
+    this.emit('stateChanged');
+
+    // Step 2 (non-blocking): everything else, in parallel. Any of these
+    // can fail without affecting the fact that the user is already signed
+    // in and looking at the dashboard.
+    this._loadSupplementaryData(firebaseUser.uid);
+  }
+
+  async _loadOrCreateOwnProfile(firebaseUser) {
     try {
       const profileRef = firestore.collection('users').doc(firebaseUser.uid);
       const profileSnap = await profileRef.get();
 
-      let user;
       if (profileSnap.exists) {
-        user = makeUserProfile(firebaseUser.uid, profileSnap.data());
-      } else {
-        user = makeUserProfile(firebaseUser.uid, {
-          name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-          email: firebaseUser.email
-        });
-        await profileRef.set({ ...user, createdAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        return makeUserProfile(firebaseUser.uid, profileSnap.data());
       }
 
-      const usersSnap = await firestore.collection('users').get();
-      this.users = {};
-      usersSnap.forEach(doc => {
+      const user = makeUserProfile(firebaseUser.uid, {
+        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+        email: firebaseUser.email
+      });
+      await profileRef.set({
+        ...user,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      return user;
+    } catch (err) {
+      // Even if Firestore is completely unreachable/misconfigured, don't
+      // block the demo: fall back to a client-only profile built from the
+      // Firebase Auth record so the app is still usable.
+      console.error('Profile load/create failed, using local fallback:', err.code || err.message || err);
+      window.showToast?.(`Signed in, but profile sync failed (${err.code || 'unknown error'}). Running in limited mode.`, 'error');
+      return makeUserProfile(firebaseUser.uid, {
+        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+        email: firebaseUser.email
+      });
+    }
+  }
+
+  async _loadSupplementaryData(uid) {
+    const [usersResult, reportsResult, txResult] = await Promise.allSettled([
+      firestore.collection('users').get(),
+      firestore.collection('reports').get(),
+      firestore.collection('users').doc(uid).collection('transactions').get()
+    ]);
+
+    if (usersResult.status === 'fulfilled') {
+      usersResult.value.forEach(doc => {
         this.users[doc.id] = makeUserProfile(doc.id, doc.data());
       });
-      this.users[firebaseUser.uid] = user;
-
-      const reportsSnap = await firestore.collection('reports').get();
-      this.commissions = reportsSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a, b) => {
-        const aTime = a.createdAt?.seconds || 0;
-        const bTime = b.createdAt?.seconds || 0;
-        return bTime - aTime;
-      });
-
-      const txSnap = await profileRef.collection('transactions').get();
-      this.transactions = txSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a, b) => {
-        const aTime = a.createdAt?.seconds || 0;
-        const bTime = b.createdAt?.seconds || 0;
-        return bTime - aTime;
-      });
-
-      this.ready = true;
-      this.emit('userChanged', user);
-      this.emit('stateChanged');
-    } catch (err) {
-      console.error('Firebase data initialization failed:', err);
-      this.ready = true;
-      this.emit('firebaseError', err);
-      this.emit('stateChanged');
+    } else {
+      console.error('Leaderboard/users list failed to load:', usersResult.reason?.code || usersResult.reason);
     }
+
+    if (reportsResult.status === 'fulfilled') {
+      this.commissions = reportsResult.value.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    } else {
+      console.error('Reports feed failed to load:', reportsResult.reason?.code || reportsResult.reason);
+    }
+
+    if (txResult.status === 'fulfilled') {
+      this.transactions = txResult.value.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    } else {
+      console.error('Transaction history failed to load:', txResult.reason?.code || txResult.reason);
+    }
+
+    this.emit('stateChanged');
   }
 
   async save() {
@@ -145,7 +180,15 @@ class StateManager {
 
   async persistUser(user) {
     if (!user?.id) return;
-    await firestore.collection('users').doc(user.id).set({ ...user, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    try {
+      await firestore.collection('users').doc(user.id).set(
+        { ...user, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error('Could not persist user:', err.code || err.message || err);
+      window.showToast?.('Could not save changes to Firebase.', 'error');
+    }
   }
 
   getUser() {
@@ -156,6 +199,8 @@ class StateManager {
   getAllUsersList() {
     return Object.values(this.users);
   }
+
+  // ---- Auth -----------------------------------------------------------
 
   async registerUser(data) {
     const email = data.email.trim().toLowerCase();
@@ -177,11 +222,18 @@ class StateManager {
       avatar: data.avatar
     });
 
+    // Best-effort profile write. If it fails, the account still exists in
+    // Firebase Auth and onAuthStateChanged will retry building a profile
+    // on next load — don't sign the user back out over a demo hiccup.
     try {
-      await firestore.collection('users').doc(user.id).set({ ...user, createdAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await firestore.collection('users').doc(user.id).set({
+        ...user,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     } catch (err) {
-      await auth.signOut();
-      return { success: false, message: 'Account was created, but the profile could not be saved to Firestore. Check your Firestore rules.' };
+      console.error('Profile write on register failed:', err.code || err.message || err);
+      window.showToast?.(`Account created, but profile sync failed (${err.code || 'unknown error'}).`, 'error');
     }
 
     this.currentUserId = user.id;
@@ -203,13 +255,19 @@ class StateManager {
       return { success: false, message: humanizeFirebaseError(err) };
     }
 
-    // app.js will call initializeForFirebaseUser through onAuthStateChanged.
-    this.currentUserId = cred.user.uid;
-    return { success: true, user: this.getUser() || makeUserProfile(cred.user.uid, {
-      name: cred.user.displayName || email.split('@')[0],
-      email
-    }) };
+    // app.js's onAuthStateChanged listener calls initializeForFirebaseUser,
+    // which is what actually loads the profile/data. We just report success
+    // here so the UI can navigate immediately.
+    return {
+      success: true,
+      user: this.getUser() || makeUserProfile(cred.user.uid, {
+        name: cred.user.displayName || email.split('@')[0],
+        email
+      })
+    };
   }
+
+  // ---- Everything below is unchanged from before ----------------------
 
   async setUserRole(roleKey) {
     const user = this.getUser();
@@ -298,7 +356,6 @@ class StateManager {
 
     this.commissions.unshift(newCommission);
 
-    // Save the report and any wallet pledge to Firebase immediately.
     firestore.collection('reports').doc(newId).set(newCommission).then(async () => {
       if (reportData.fundingSource === 'wallet' && user.phpBalance >= reward && reward > 0) {
         user.phpBalance -= reward;
@@ -323,7 +380,7 @@ class StateManager {
       }
       this.emit('stateChanged');
     }).catch(err => {
-      console.error('Could not save report to Firestore:', err);
+      console.error('Could not save report to Firestore:', err.code || err.message || err);
       this.commissions = this.commissions.filter(c => c.id !== newId);
       this.emit('stateChanged');
       window.showToast?.('Report could not be saved to Firebase.', 'error');
@@ -349,7 +406,7 @@ class StateManager {
       assignedTo: comm.assignedTo,
       assignedToId: comm.assignedToId
     }).catch(err => {
-      console.error('Could not update report:', err);
+      console.error('Could not update report:', err.code || err.message || err);
       window.showToast?.('Could not save this task to Firebase.', 'error');
     });
 
@@ -380,7 +437,7 @@ class StateManager {
       proofData: comm.proofData,
       votes: comm.votes
     }).catch(err => {
-      console.error('Could not save proof:', err);
+      console.error('Could not save proof:', err.code || err.message || err);
       window.showToast?.('Proof could not be saved to Firebase.', 'error');
     });
 
@@ -401,7 +458,7 @@ class StateManager {
         status: comm.status,
         imageAfter: null,
         rejectNotes: comm.rejectNotes
-      }).catch(console.error);
+      }).catch(err => console.error('Could not save rejection:', err.code || err.message || err));
       this.emit('proofRejected', comm);
       this.emit('stateChanged');
       return true;
@@ -443,7 +500,7 @@ class StateManager {
       await this.persistUser(cleaner);
       await this.addTransaction(cleaner.id, tx);
     }).catch(err => {
-      console.error('Could not save verification:', err);
+      console.error('Could not save verification:', err.code || err.message || err);
       window.showToast?.('Verification could not be saved to Firebase.', 'error');
     });
 
@@ -480,7 +537,7 @@ class StateManager {
     firestore.collection('users').doc(user.id).set(user, { merge: true })
       .then(() => this.addTransaction(user.id, tx))
       .catch(err => {
-        console.error('Could not save withdrawal:', err);
+        console.error('Could not save withdrawal:', err.code || err.message || err);
         window.showToast?.('Withdrawal could not be saved to Firebase.', 'error');
       });
 

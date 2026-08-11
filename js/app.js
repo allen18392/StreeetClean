@@ -432,6 +432,10 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('hashchange', window.renderRoute);
 
   auth.onAuthStateChanged(async (firebaseUser) => {
+    // initializeForFirebaseUser now resolves as soon as the signed-in
+    // user's OWN profile is loaded (or falls back to a local profile if
+    // Firestore hiccups) — it no longer waits on the leaderboard/reports/
+    // transactions, so routing happens immediately after sign-in.
     await window.appState.initializeForFirebaseUser(firebaseUser);
 
     if (firebaseUser) {
