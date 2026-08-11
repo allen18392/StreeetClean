@@ -268,11 +268,11 @@ window.openCommissionDetails = (id) => {
       <div style="display: flex; align-items: center; justify-content: space-between; background: ${Number(comm.rewardPhp) > 0 ? '#fef3c7' : '#f3e8ff'}; border: 1px solid ${Number(comm.rewardPhp) > 0 ? '#fde68a' : '#d8b4fe'}; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
         <div>
           <div style="font-size: 0.72rem; color: ${Number(comm.rewardPhp) > 0 ? '#92400e' : '#7e22ce'}; text-transform: uppercase; font-weight: 700;">${Number(comm.rewardPhp) > 0 ? 'LGU-Assigned Cleanup Reward' : 'Cleanup Reward Pending'}</div>
-          <div class="font-mono" style="font-size: 1.6rem; font-weight: 800; color: ${Number(comm.rewardPhp) > 0 ? '#b45309' : '#7e22ce'};">${Number(comm.rewardPhp) > 0 ? `₱${Number(comm.rewardPhp).toFixed(2)}` : 'TBD'}</div>
+          <div class="font-mono" style="font-size: 1.6rem; font-weight: 800; color: ${Number(comm.rewardPhp) > 0 ? '#b45309' : '#7e22ce'};">${Number(comm.rewardPhp) > 0 ? `₱${Number(comm.rewardPhp).toFixed(2)}` : 'TBA'}</div>
         </div>
         <div style="text-align: right;">
-          <div style="font-size: 0.72rem; color: #92400e;">Est. Weight / Time</div>
-          <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">${comm.estimatedWeightKg} kg • ${comm.deadline}</div>
+          <div style="font-size: 0.72rem; color: #92400e;">Estimated Weight</div>
+          <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">${Number(comm.estimatedWeightKg || 0).toFixed(2)} kg</div>
         </div>
       </div>
 
@@ -316,10 +316,16 @@ window.openCommissionDetails = (id) => {
         </div>
       ` : ''}
 
-      ${comm.status === 'open' ? `
-        <button class="btn btn-gold btn-block" onclick="window.claimTask('${comm.id}')">
+      ${comm.status === 'open' && Number(comm.rewardPhp) > 0 ? `
+        <button class="btn btn-gold btn-block" style="margin-top: 0.25rem;" onclick="window.claimTask('${comm.id}')">
           <i class="fa-solid fa-hand-holding-dollar"></i> Claim Cleanup Task (₱${Number(comm.rewardPhp).toFixed(2)})
         </button>
+      ` : ''}
+
+      ${comm.status === 'open' && Number(comm.rewardPhp) <= 0 ? `
+        <div class="card" style="padding:10px;background:#faf5ff;border:1px solid #d8b4fe;text-align:center;color:#7e22ce;font-weight:700;font-size:.85rem;margin-top:0.25rem;">
+          <i class="fa-solid fa-shield-halved"></i> Reward pending — an authorized LGU verifier must assign the bounty before this task can be claimed.
+        </div>
       ` : ''}
 
       ${comm.status === 'in_progress' ? `

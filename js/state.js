@@ -339,7 +339,7 @@ class StateManager {
       bountyAssignedBy: null,
       bountyAssignedAt: null,
       cleanPoints: 0,
-      estimatedWeightKg: parseInt(reportData.estimatedWeightKg) || 0,
+      estimatedWeightKg: parseFloat(reportData.estimatedWeightKg) || 0,
       status: 'pending_bounty',
       reportedBy: user.name,
       reportedById: user.id,
@@ -434,7 +434,7 @@ class StateManager {
     comm.status = 'in_review';
     comm.imageAfter = proof.imageAfter || null;
     comm.proofData = {
-      weightRecordedKg: parseInt(proof.weightKg) || comm.estimatedWeightKg,
+      weightRecordedKg: parseFloat(proof.weightKg) || comm.estimatedWeightKg,
       facilityManifestId: proof.manifestId || '',
       exifGpsMatch: 99.8,
       aiCleanlinessScore: 99.2,

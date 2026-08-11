@@ -109,12 +109,14 @@ window.CommissionsView = {
     return `
       <div class="card task-card" style="background: #ffffff;" onclick="window.openTaskModal('${c.id}')">
         <div class="task-card-header">
-          <div>
-            <span class="status-badge status-${c.status}"><span class="badge-dot"></span> ${c.status.replace('_', ' ')}</span>
-            <span class="severity-pill ${c.severity}" style="margin-left: 4px;">${c.severity}</span>
+          <div class="task-card-status-group">
+            ${c.status === 'pending_bounty'
+              ? '<span class="task-card-pending-badge"><span class="badge-dot"></span> Pending Bounty</span>'
+              : `<span class="status-badge status-${c.status}"><span class="badge-dot"></span> ${c.status.replace('_', ' ')}</span>`}
+            <span class="severity-pill ${c.severity}">${c.severity}</span>
           </div>
-          <div class="task-card-bounty">
-            ${Number(c.rewardPhp) > 0 ? `₱${Number(c.rewardPhp).toFixed(0)}` : 'Reward TBD'}
+          <div class="task-card-bounty ${Number(c.rewardPhp) > 0 ? '' : 'is-tba'}">
+            ${Number(c.rewardPhp) > 0 ? `₱${Number(c.rewardPhp).toFixed(2)}` : 'TBA'}
           </div>
         </div>
 
@@ -134,7 +136,7 @@ window.CommissionsView = {
 
         <div class="task-card-meta">
           <div>
-            <i class="fa-solid fa-weight-hanging" style="color: var(--emerald-600);"></i> ~${c.estimatedWeightKg} kg
+            <i class="fa-solid fa-weight-hanging" style="color: var(--emerald-600);"></i> ~${Number(c.estimatedWeightKg || 0).toFixed(2)} kg
           </div>
         </div>
       </div>

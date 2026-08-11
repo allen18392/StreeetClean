@@ -13,7 +13,7 @@ window.ReportView = {
     lng: 123.7345,
     category: 'Plastics & Beverage Cups',
     severity: 'high',
-    estimatedWeightKg: 25,
+    estimatedWeightKg: '',
     description: '',
     imageUrl: 'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=800&q=80',
     imageFile: null
@@ -163,7 +163,7 @@ window.ReportView = {
 
         <div class="form-group">
           <label class="form-label">Estimated Weight (kg)</label>
-          <input type="number" class="form-control" id="report-weight" value="${this.formData.estimatedWeightKg}" min="5" max="500" step="5" />
+          <input type="text" inputmode="decimal" class="form-control" id="report-weight" value="${this.formData.estimatedWeightKg}" placeholder="e.g. 20 kg" />
         </div>
 
         <div class="form-group">
@@ -254,9 +254,19 @@ window.ReportView = {
       if (addr) this.formData.address = addr;
     }
     if (step === 3) {
-      const weight = document.getElementById('report-weight')?.value;
+      const weight = document.getElementById('report-weight')?.value?.trim();
       const desc = document.getElementById('report-desc')?.value;
-      if (weight) this.formData.estimatedWeightKg = parseInt(weight);
+      if (weight) {
+        const parsedWeight = parseFloat(weight.replace(/[^0-9.]/g, ''));
+        if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) {
+          window.showToast('Please enter a valid estimated weight, such as 20 kg.', 'error');
+          return;
+        }
+        this.formData.estimatedWeightKg = parsedWeight;
+      } else {
+        window.showToast('Please enter the estimated weight of the trash.', 'error');
+        return;
+      }
       if (desc) this.formData.description = desc;
     }
 

@@ -134,7 +134,7 @@ window.VerifyView = {
               <span class="font-mono" style="font-size:.7rem;color:#64748b;">${c.id}</span>
             </div>
             <div style="font-size:1rem;font-weight:800;color:#0f172a;">${c.title}</div>
-            <div style="font-size:.74rem;color:#64748b;margin-top:3px;">${c.sector} • ${c.severity} • ~${c.estimatedWeightKg} kg</div>
+            <div style="font-size:.74rem;color:#64748b;margin-top:3px;">${c.sector} • ${c.severity} • ~${Number(c.estimatedWeightKg || 0).toFixed(2)} kg</div>
           </div>
           <div style="font-size:.72rem;color:#7e22ce;font-weight:700;">Resident report</div>
         </div>
@@ -246,7 +246,7 @@ window.VerifyView = {
             </div>
             <div style="background: #ffffff; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid #e2e8f0;">
               <div style="font-size: 0.65rem; color: #64748b;">MRF Weight Scale</div>
-              <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a;">${proof.weightRecordedKg} kg Verified</div>
+              <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a;">${Number(proof.weightRecordedKg || 0).toFixed(2)} kg Verified</div>
             </div>
             <div style="background: #ffffff; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid #e2e8f0;">
               <div style="font-size: 0.65rem; color: #64748b;">LGU Manifest Ref</div>
