@@ -30,14 +30,6 @@
   <!-- App Wrapper Shell -->
   <div class="app-wrapper">
 
-    <!-- Mobile Device Simulation Notch (Active in Mobile Frame Mode) -->
-    <div class="mobile-device-notch">
-      <div class="device-island-pill">
-        <span><i class="fa-solid fa-masks-theater"></i> Ibalong 2026</span>
-        <span>9:41</span>
-      </div>
-    </div>
-
     <!-- Site Navigation Header -->
     <header class="site-header" id="site-header">
       <div class="app-container">
@@ -80,9 +72,13 @@
 
           <!-- Header Actions -->
           <div class="header-actions">
-            <!-- Mobile Frame Simulation Toggle -->
-            <button class="device-toggle-btn" id="device-toggle-btn" title="Toggle Mobile Device Frame Simulation" onclick="window.toggleMobileFrame()">
-              <i class="fa-solid fa-mobile-screen"></i>
+            <!-- Desktop / Mobile View Toggle -->
+            <button class="device-toggle-btn" id="device-toggle-btn" type="button" role="switch" aria-checked="false" title="Switch to Mobile View" onclick="window.toggleMobileFrame()">
+              <span class="device-toggle-label device-toggle-label-desktop">Desktop</span>
+              <span class="device-toggle-track" aria-hidden="true">
+                <span class="device-toggle-thumb"><i class="fa-solid fa-desktop"></i></span>
+              </span>
+              <span class="device-toggle-label device-toggle-label-mobile">Mobile</span>
             </button>
 
             <!-- User Profile Quick Chip -->

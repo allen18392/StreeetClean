@@ -26,10 +26,14 @@
 
 body.mode-mobile-frame .mobile-bottom-nav {
   position: absolute;
-  width: 100%;
+  left: 0;
+  right: 0;
   bottom: 0;
-  border-bottom-left-radius: 44px;
-  border-bottom-right-radius: 44px;
+  width: 100%;
+  height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  border-bottom-left-radius: 32px;
+  border-bottom-right-radius: 32px;
 }
 
 .bottom-nav-item {

@@ -212,11 +212,20 @@ window.toggleMobileFrame = () => {
   document.body.classList.toggle('mode-mobile-frame');
   const isFrame = document.body.classList.contains('mode-mobile-frame');
   const btn = document.getElementById('device-toggle-btn');
+
   if (btn) {
-    btn.innerHTML = isFrame ? '<i class="fa-solid fa-expand"></i>' : '<i class="fa-solid fa-mobile-screen"></i>';
-    btn.title = isFrame ? 'Switch to Full-Screen Responsive View' : 'Switch to Mobile Frame Simulation View';
+    btn.setAttribute('aria-checked', String(isFrame));
+    btn.title = isFrame ? 'Switch to Desktop View' : 'Switch to Mobile View';
+
+    const thumb = btn.querySelector('.device-toggle-thumb');
+    if (thumb) {
+      thumb.innerHTML = isFrame
+        ? '<i class="fa-solid fa-mobile-screen"></i>'
+        : '<i class="fa-solid fa-desktop"></i>';
+    }
   }
-  window.showToast(isFrame ? 'Mobile Device Frame Preview Enabled' : 'Full Responsive View Enabled', 'success');
+
+  window.showToast(isFrame ? 'Mobile View Enabled' : 'Desktop View Enabled', 'success');
 };
 
 // Open Commission Details & Actions Modal
