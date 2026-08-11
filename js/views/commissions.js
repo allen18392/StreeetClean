@@ -120,10 +120,7 @@ window.CommissionsView = {
 
         <div class="task-card-img-wrap">
           <img src="${c.imageBefore}" class="task-card-img" alt="${c.title}" />
-          <div class="task-card-img-badge">
-            <i class="fa-solid fa-location-dot" style="color: var(--emerald-400);"></i>
-            <span>${c.distanceKm}</span>
-          </div>
+
         </div>
 
         <div>
@@ -137,10 +134,7 @@ window.CommissionsView = {
 
         <div class="task-card-meta">
           <div>
-            <i class="fa-solid fa-weight-hanging" style="color: var(--emerald-600);"></i> ~${c.estimatedWeightKg} kg • <i class="fa-solid fa-coins" style="color: var(--gold-600);"></i> +${c.cleanPoints} pts
-          </div>
-          <div style="font-weight: 700; color: #b45309;">
-            ${c.deadline}
+            <i class="fa-solid fa-weight-hanging" style="color: var(--emerald-600);"></i> ~${c.estimatedWeightKg} kg
           </div>
         </div>
       </div>

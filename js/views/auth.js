@@ -16,6 +16,7 @@ window.AuthView = {
     email: '',
     password: '',
     barangay: '',
+    customLocation: '',
     phone: ''
   },
 
@@ -226,17 +227,9 @@ window.AuthView = {
         </div>
 
         <div class="form-group">
-          <label class="form-label">Legazpi City Barangay</label>
-          <select class="form-control" id="reg-barangay">
-            <option value="Barangay Albay District, Legazpi City" ${this.formData.barangay === 'Barangay Albay District, Legazpi City' ? 'selected' : ''}>Barangay Albay District (Peñaranda Park)</option>
-            <option value="Barangay Bitano, Legazpi City" ${this.formData.barangay === 'Barangay Bitano, Legazpi City' ? 'selected' : ''}>Barangay Bitano (Astrodome Zone)</option>
-            <option value="Barangay Puro, Legazpi City" ${this.formData.barangay === 'Barangay Puro, Legazpi City' ? 'selected' : ''}>Barangay Puro (Legazpi Boulevard)</option>
-            <option value="Barangay Rawis, Legazpi City" ${this.formData.barangay === 'Barangay Rawis, Legazpi City' ? 'selected' : ''}>Barangay Rawis</option>
-            <option value="Barangay Bogtong, Legazpi City" ${this.formData.barangay === 'Barangay Bogtong, Legazpi City' ? 'selected' : ''}>Barangay Bogtong</option>
-            <option value="Barangay EM's Barrio, Legazpi City" ${this.formData.barangay === "Barangay EM's Barrio, Legazpi City" ? 'selected' : ''}>Barangay EM's Barrio</option>
-            <option value="Barangay Port District, Legazpi City" ${this.formData.barangay === 'Barangay Port District, Legazpi City' ? 'selected' : ''}>Barangay Port District (Embarcadero)</option>
-            <option value="Barangay Dap-dap, Legazpi City" ${this.formData.barangay === 'Barangay Dap-dap, Legazpi City' ? 'selected' : ''}>Barangay Dap-dap</option>
-          </select>
+          <label class="form-label">Location</label>
+          <input type="text" class="form-control" id="reg-custom-location" value="${this.formData.customLocation}" placeholder="e.g. Barangay Rawis, Legazpi City" required />
+          <div style="font-size: 0.72rem; color: #64748b; margin-top: 5px;">Type your barangay, street, landmark, or full address.</div>
         </div>
 
         <div class="form-group">
@@ -311,7 +304,7 @@ window.AuthView = {
       this.formData.name = document.getElementById('reg-name')?.value ?? this.formData.name;
       this.formData.email = document.getElementById('reg-email')?.value ?? this.formData.email;
       this.formData.password = document.getElementById('reg-password')?.value ?? this.formData.password;
-      this.formData.barangay = document.getElementById('reg-barangay')?.value ?? this.formData.barangay;
+      this.formData.customLocation = document.getElementById('reg-custom-location')?.value ?? this.formData.customLocation;
       this.formData.phone = document.getElementById('reg-phone')?.value ?? this.formData.phone;
     }
     this.registerStep = step;
@@ -355,19 +348,19 @@ window.AuthView = {
     if (liveEmail !== undefined) this.formData.email = liveEmail;
     const livePassword = document.getElementById('reg-password')?.value;
     if (livePassword !== undefined) this.formData.password = livePassword;
-    const liveBarangay = document.getElementById('reg-barangay')?.value;
-    if (liveBarangay !== undefined) this.formData.barangay = liveBarangay;
+    const liveCustomLocation = document.getElementById('reg-custom-location')?.value;
+    if (liveCustomLocation !== undefined) this.formData.customLocation = liveCustomLocation;
     const livePhone = document.getElementById('reg-phone')?.value;
     if (livePhone !== undefined) this.formData.phone = livePhone;
 
     const rawName = this.formData.name || '';
     const email = this.formData.email.trim();
     const password = this.formData.password;
-    const barangay = this.formData.barangay || '';
+    const barangay = (this.formData.customLocation || '').trim();
     const phone = this.formData.phone || '';
 
-    if (!rawName.trim() || !email || !password) {
-      window.showToast('Please complete your name, email, and password.', 'error');
+    if (!rawName.trim() || !email || !password || !barangay) {
+      window.showToast('Please complete your name, email, password, and location.', 'error');
       this.registerStep = 2;
       window.renderRoute();
       return;
@@ -391,7 +384,7 @@ window.AuthView = {
       window.soundSystem.success();
       window.showToast(`Account created for ${result.user.name}! Welcome to Ibalong 2026.`, 'success');
       this.registerStep = 1;
-      this.formData = { name: '', email: '', password: '', barangay: '', phone: '' };
+      this.formData = { name: '', email: '', password: '', barangay: '', customLocation: '', phone: '' };
       window.location.hash = '#/dashboard';
     } else {
       window.showToast(result.message, 'error');
