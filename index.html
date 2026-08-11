@@ -97,7 +97,11 @@
 
     <!-- Dynamic Page Content Root -->
     <main id="app-root">
-      <!-- Injected by SPA views -->
+      <!-- Shown until Firebase Auth resolves and renderRoute() takes over -->
+      <div class="app-loading-state" id="app-loading-state">
+        <div class="app-loading-spinner"></div>
+        <p>Loading StreetClean…</p>
+      </div>
     </main>
 
     <!-- Mobile-First Sticky Bottom Navigation Bar -->

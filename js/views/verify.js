@@ -214,11 +214,47 @@ window.VerifyView = {
   },
 
   rejectProof(id) {
-    const notes = prompt('Enter notes for the cleaner (e.g. "Litter residue remaining near bench"):');
-    if (notes !== null) {
-      window.appState.verifyProof(id, false, notes);
-      window.showToast('Task returned to cleaner for re-cleaning.', 'error');
-      window.renderRoute();
-    }
+    const comm = window.appState.getCommissionById(id);
+    if (!comm) return;
+
+    const modalHtml = `
+      <div class="modal-card">
+        <button class="modal-close-btn" onclick="window.closeModal()"><i class="fa-solid fa-xmark"></i></button>
+
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
+          <div class="brand-icon" style="width: 32px; height: 32px; font-size: 0.95rem; background: linear-gradient(135deg, #e11d48, #f43f5e);">
+            <i class="fa-solid fa-rotate-left"></i>
+          </div>
+          <h3 style="font-size: 1.1rem; font-weight: 800; color: #0f172a;">Reject & Return for Re-clean</h3>
+        </div>
+
+        <p style="font-size: 0.82rem; color: #64748b; margin-bottom: 1.25rem;">
+          Let ${comm.assignedTo || 'the cleaner'} know what still needs to be done at <strong>${comm.title}</strong>.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Notes for the Cleaner</label>
+          <textarea class="form-control" id="reject-notes" placeholder="e.g. Litter residue remaining near bench"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-secondary" style="flex: 1;" onclick="window.closeModal()">
+            Cancel
+          </button>
+          <button class="btn btn-primary" style="flex: 2; background: linear-gradient(135deg, #e11d48, #f43f5e); border-color: #e11d48;" onclick="window.VerifyView.confirmReject('${id}')">
+            <i class="fa-solid fa-rotate-left"></i> Confirm Rejection
+          </button>
+        </div>
+      </div>
+    `;
+    window.openModal(modalHtml);
+  },
+
+  confirmReject(id) {
+    const notes = document.getElementById('reject-notes')?.value.trim() || 'Please re-sweep the site.';
+    window.appState.verifyProof(id, false, notes);
+    window.closeModal();
+    window.showToast('Task returned to cleaner for re-cleaning.', 'error');
+    window.renderRoute();
   }
 };
