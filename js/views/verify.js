@@ -204,21 +204,26 @@ window.VerifyView = {
     }
   },
 
-  approveProof(id) {
-    const success = window.appState.verifyProof(id, true);
-    if (success) {
+  async approveProof(id) {
+    try {
+      await window.appState.verifyProof(id, true);
       window.soundSystem.fanfare();
       window.showToast('Escrow Payout Approved! ₱ Bounty & Clean Points released to cleaner.', 'gold');
       window.renderRoute();
+    } catch (err) {
+      window.showToast(err.message || 'Could not approve this cleanup.', 'error');
     }
   },
 
-  rejectProof(id) {
+  async rejectProof(id) {
     const notes = prompt('Enter notes for the cleaner (e.g. "Litter residue remaining near bench"):');
-    if (notes !== null) {
-      window.appState.verifyProof(id, false, notes);
+    if (notes === null) return;
+    try {
+      await window.appState.verifyProof(id, false, notes);
       window.showToast('Task returned to cleaner for re-cleaning.', 'error');
       window.renderRoute();
+    } catch (err) {
+      window.showToast(err.message || 'Could not process this rejection.', 'error');
     }
   }
 };

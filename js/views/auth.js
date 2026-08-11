@@ -5,7 +5,6 @@
 
 window.AuthView = {
   activeTab: 'login',
-  selectedRole: 'cleaner',
   registerStep: 1,
   selectedAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
 
@@ -158,58 +157,25 @@ window.AuthView = {
   renderStep1() {
     return `
       <div>
-        <h2 style="font-size: 1.05rem; margin-bottom: 4px; color: #0f172a;">1. Select Account Role</h2>
+        <h2 style="font-size: 1.05rem; margin-bottom: 4px; color: #0f172a;">1. Account Type</h2>
         <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.25rem;">
-          Choose your account type for the Ibalong Festival cleanup:
+          Every new account starts as a <strong>Resident</strong> — you can report litter hotspots
+          right away. Cleaner access is granted after you apply and an admin approves you, and
+          Verifier accounts are assigned directly by festival admins.
         </p>
 
         <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem;">
-          
-          <div class="card ${this.selectedRole === 'resident' ? 'card-gold-glow' : ''}" style="padding: 12px; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0;" onclick="window.AuthView.selectRole('resident')">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
-                  <i class="fa-solid fa-camera"></i>
-                </div>
-                <div>
-                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Resident / Reporter</div>
-                  <div style="font-size: 0.72rem; color: #64748b;">Report festival litter & pin locations.</div>
-                </div>
+          <div class="card card-gold-glow" style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                <i class="fa-solid fa-camera"></i>
               </div>
-              <input type="radio" name="regRole" ${this.selectedRole === 'resident' ? 'checked' : ''} />
+              <div>
+                <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Resident / Reporter</div>
+                <div style="font-size: 0.72rem; color: #64748b;">Report festival litter & pin locations. You can apply to become a Cleaner from your profile after signing up.</div>
+              </div>
             </div>
           </div>
-
-          <div class="card ${this.selectedRole === 'cleaner' ? 'card-gold-glow' : ''}" style="padding: 12px; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0;" onclick="window.AuthView.selectRole('cleaner')">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: #dcfce7; color: var(--emerald-700); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
-                  <i class="fa-solid fa-broom"></i>
-                </div>
-                <div>
-                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Cleaner / Eco-Warrior</div>
-                  <div style="font-size: 0.72rem; color: #64748b;">Claim cleanup tasks & earn ₱ bounties.</div>
-                </div>
-              </div>
-              <input type="radio" name="regRole" ${this.selectedRole === 'cleaner' ? 'checked' : ''} />
-            </div>
-          </div>
-
-          <div class="card ${this.selectedRole === 'verifier' ? 'card-gold-glow' : ''}" style="padding: 12px; cursor: pointer; background: #f8fafc; border: 1px solid #e2e8f0;" onclick="window.AuthView.selectRole('verifier')">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: #fef3c7; color: #b45309; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
-                  <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <div>
-                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Verifier / Marshall</div>
-                  <div style="font-size: 0.72rem; color: #64748b;">Audit photo proofs & approve cleanups.</div>
-                </div>
-              </div>
-              <input type="radio" name="regRole" ${this.selectedRole === 'verifier' ? 'checked' : ''} />
-            </div>
-          </div>
-
         </div>
 
         <button class="btn btn-primary btn-block" onclick="window.AuthView.setStep(2)">
@@ -326,11 +292,6 @@ window.AuthView = {
     window.renderRoute();
   },
 
-  selectRole(role) {
-    this.selectedRole = role;
-    window.renderRoute();
-  },
-
   setStep(step) {
     // If we're leaving step 2, its input fields are about to be destroyed
     // by the re-render — grab their current values first so nothing is lost.
@@ -406,7 +367,6 @@ window.AuthView = {
       name: name,
       email: email,
       password: password,
-      role: this.selectedRole,
       barangay: barangay,
       phone: phone,
       avatar: this.selectedAvatar,

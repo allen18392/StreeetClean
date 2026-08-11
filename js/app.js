@@ -185,13 +185,18 @@ window.showToast = (message, type = 'success') => {
   }, 4000);
 };
 
-// Quick Switch Role
-window.switchRole = (roleKey) => {
-  window.appState.setUserRole(roleKey);
-  window.soundSystem.click();
-  const user = window.appState.getUser();
-  window.showToast(`Switched persona to ${user.name} (${user.role.toUpperCase()})`, 'gold');
-  window.renderRoute();
+// Apply to become a Cleaner. Unlike the old switchRole(), this does NOT
+// grant anything itself — it files an application an admin has to
+// approve server-side before the role claim actually changes.
+window.applyForCleaner = async () => {
+  try {
+    await window.appState.applyForCleanerRole();
+    window.soundSystem.click();
+    window.showToast('Application submitted! An admin will review it shortly.', 'gold');
+    window.renderRoute();
+  } catch (err) {
+    window.showToast(err.message || 'Could not submit application.', 'error');
+  }
 };
 
 // Log Out — signs out of Firebase; the onAuthStateChanged listener below
@@ -441,35 +446,19 @@ window.submitProofAction = (id) => {
 window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('hashchange', window.renderRoute);
 
-  auth.onAuthStateChanged((firebaseUser) => {
+  auth.onAuthStateChanged(async (firebaseUser) => {
     if (firebaseUser) {
-      // Real session confirmed. Rebuild a minimal local profile if this
-      // browser doesn't have one yet (e.g. localStorage was cleared).
-      if (!window.appState.users[firebaseUser.uid]) {
-        window.appState.users[firebaseUser.uid] = {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-          email: firebaseUser.email,
-          role: 'cleaner',
-          roleTitle: 'Ibalong Eco-Warrior & Clean Specialist',
-          badgeLevel: 'Legazpi Active Member',
-          barangay: 'Barangay Albay District, Legazpi City',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
-          phone: '0917-000-0000',
-          payoutProvider: 'GCash',
-          payoutAccount: '0917-000-0000',
-          phpBalance: 500.00,
-          cleanPoints: 250,
-          stakedPoints: 0,
-          escrowLockedPhp: 0.00,
-          createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-          stats: { completedCleans: 0, kgRecycled: 0, verificationRate: 100.0, festivalRank: 'New Eco-Warrior', hoursContributed: 0 },
-          badges: [],
-          gear: []
-        };
+      // Real session confirmed. Always rebuild the session from the ID
+      // token's role claim + Firestore — never default to a hardcoded
+      // role here, or a cleared localStorage would silently grant one.
+      try {
+        await window.appState._loadUserSession(firebaseUser.uid);
+      } catch (err) {
+        console.error('Failed to load user session:', err);
+        window.showToast('Could not load your account. Please try signing in again.', 'error');
+        await auth.signOut();
+        return;
       }
-      window.appState.currentUserId = firebaseUser.uid;
-      window.appState.save();
 
       const h = window.location.hash;
       if (!h || h.startsWith('#/auth') || h.startsWith('#/login') || h.startsWith('#/register')) {

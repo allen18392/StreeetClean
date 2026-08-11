@@ -23,18 +23,21 @@ window.ProfileView = {
               <i class="fa-solid fa-location-dot" style="color: var(--emerald-600);"></i> ${user.barangay}
             </div>
 
-            <!-- Role Switch Quick Buttons -->
+            <!-- Role badge + cleaner application -->
             <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
-              <button class="btn ${user.role === 'resident' ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.switchRole('resident')">
-                <i class="fa-solid fa-camera"></i> Resident
-              </button>
-              <button class="btn ${user.role === 'cleaner' ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.switchRole('cleaner')">
-                <i class="fa-solid fa-broom"></i> Cleaner
-              </button>
-              <button class="btn ${user.role === 'verifier' ? 'btn-gold' : 'btn-secondary'} btn-sm" onclick="window.switchRole('verifier')">
-                <i class="fa-solid fa-shield-halved"></i> Verifier
-              </button>
+              <span class="btn ${user.role === 'verifier' ? 'btn-gold' : 'btn-primary'} btn-sm" style="pointer-events: none;">
+                <i class="fa-solid ${user.role === 'cleaner' ? 'fa-broom' : user.role === 'verifier' ? 'fa-shield-halved' : 'fa-camera'}"></i>
+                ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              </span>
+              ${user.role === 'resident' ? `
+                <button class="btn btn-secondary btn-sm" onclick="window.applyForCleaner()" ${user.cleanerApplicationStatus === 'pending' ? 'disabled' : ''}>
+                  <i class="fa-solid fa-broom"></i> ${user.cleanerApplicationStatus === 'pending' ? 'Cleaner Application Pending' : 'Apply to be a Cleaner'}
+                </button>
+              ` : ''}
             </div>
+            <p style="font-size: 0.72rem; color: #94a3b8; margin-top: 8px;">
+              Roles are granted by festival admins — Cleaner via application review, Verifier by direct assignment.
+            </p>
           </div>
 
           <!-- Impact Metrics Grid -->

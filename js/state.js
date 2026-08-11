@@ -203,6 +203,29 @@ function humanizeFirebaseError(err) {
   return map[err.code] || err.message;
 }
 
+// ---------- Trusted backend calls (server/api.js) ----------
+// Every call sends the CURRENT Firebase ID token. The server re-verifies
+// it and re-checks the role custom claim itself — it never trusts
+// anything else in the request body for authorization decisions.
+async function callApi(path, { method = 'POST', body } = {}) {
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error('Not signed in.');
+  const idToken = await currentUser.getIdToken();
+
+  const res = await fetch(`/api${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Request failed.');
+  return data;
+}
+
 class StateManager {
   constructor() {
     this.listeners = {};
@@ -246,7 +269,11 @@ class StateManager {
     return Object.values(this.users);
   }
 
-  // ---------- PATCHED: Register a brand new REAL account via Firebase Auth ----------
+  // ---------- Register a brand new REAL account via Firebase Auth ----------
+  // Role is intentionally NOT accepted from the caller here. Every new
+  // account is a "resident" — that's decided server-side in
+  // POST /api/register, which is the only place a role claim gets set
+  // without a human (admin) approving it.
   async registerUser(data) {
     const email = data.email.trim().toLowerCase();
 
@@ -260,52 +287,26 @@ class StateManager {
     const uid = cred.user.uid;
     await cred.user.updateProfile({ displayName: data.name.trim() });
 
-    const roleTitles = {
-      resident: 'Civic Guardian & Festival Reporter',
-      cleaner: 'Ibalong Eco-Warrior & Clean Specialist',
-      verifier: 'Official LGU Festival Marshall'
-    };
+    try {
+      await callApi('/register', {
+        body: {
+          name: data.name.trim(),
+          barangay: data.barangay,
+          avatar: data.avatar,
+          phone: data.phone,
+          payoutProvider: data.payoutProvider,
+          payoutAccount: data.payoutAccount
+        }
+      });
+    } catch (err) {
+      return { success: false, message: `Account created but profile setup failed: ${err.message}` };
+    }
 
-    const newUser = {
-      id: uid,
-      name: data.name.trim(),
-      email,
-      role: data.role || 'cleaner',
-      roleTitle: roleTitles[data.role] || 'Civic Participant',
-      badgeLevel: `${data.barangay ? data.barangay.split(',')[0] : 'Legazpi'} Active Member`,
-      barangay: data.barangay || 'Barangay Albay District, Legazpi City',
-      avatar: data.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
-      phone: data.phone || '0917-000-0000',
-      payoutProvider: data.payoutProvider || 'GCash',
-      payoutAccount: data.payoutAccount || data.phone || '0917-000-0000',
-      phpBalance: 500.00, // ₱500 Welcome Civic Grant!
-      cleanPoints: 250,
-      stakedPoints: 0,
-      escrowLockedPhp: 0.00,
-      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-      stats: {
-        completedCleans: 0,
-        kgRecycled: 0,
-        verificationRate: 100.0,
-        festivalRank: 'New Eco-Warrior',
-        hoursContributed: 0
-      },
-      badges: [
-        { id: 'b_new', name: 'Ibalong Pioneer', desc: 'Registered for 2026 Festival Cleanup', icon: 'fa-star', color: 'gold' }
-      ],
-      gear: ['Basic Sanitation Gloves', 'Biodegradable Segregation Bags']
-    };
-
-    this.users[uid] = newUser;
-    this.currentUserId = uid;
-    this.save();
-
-    this.emit('userChanged', newUser);
-    this.emit('stateChanged');
-    return { success: true, user: newUser };
+    const user = await this._loadUserSession(uid, { badgeLevel: `${data.barangay ? data.barangay.split(',')[0] : 'Legazpi'} Active Member` });
+    return { success: true, user };
   }
 
-  // ---------- PATCHED: Log in with a REAL Firebase credential check ----------
+  // ---------- Log in with a REAL Firebase credential check ----------
   async loginUser(identifier, password) {
     const email = identifier.trim().toLowerCase();
 
@@ -316,44 +317,72 @@ class StateManager {
       return { success: false, message: humanizeFirebaseError(err) };
     }
 
-    const uid = cred.user.uid;
+    const user = await this._loadUserSession(cred.user.uid);
+    return { success: true, user };
+  }
 
-    let user = this.users[uid];
-    if (!user) {
-      // Real Firebase account exists, but no local profile on this browser yet
-      // (e.g. different device). Create a starter profile so nothing breaks.
-      user = {
-        id: uid,
-        name: cred.user.displayName || email.split('@')[0],
-        email,
-        role: 'cleaner',
-        roleTitle: 'Ibalong Eco-Warrior & Clean Specialist',
-        badgeLevel: 'Legazpi Active Member',
-        barangay: 'Barangay Albay District, Legazpi City',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80',
-        phone: '0917-000-0000',
-        payoutProvider: 'GCash',
-        payoutAccount: '0917-000-0000',
-        phpBalance: 500.00,
-        cleanPoints: 250,
-        stakedPoints: 0,
-        escrowLockedPhp: 0.00,
-        createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-        stats: { completedCleans: 0, kgRecycled: 0, verificationRate: 100.0, festivalRank: 'New Eco-Warrior', hoursContributed: 0 },
-        badges: [],
-        gear: []
-      };
-      this.users[uid] = user;
+  // Builds the local session for uid from the AUTHORITATIVE sources:
+  // the ID token's role claim (never the Firestore doc, never localStorage)
+  // plus the Firestore users/{uid} doc for display data.
+  async _loadUserSession(uid, defaults = {}) {
+    // force=true so a role just granted by /api/register or an admin
+    // action shows up immediately instead of the stale cached token.
+    const tokenResult = await auth.currentUser.getIdTokenResult(true);
+    let role = tokenResult.claims.role;
+
+    if (!role) {
+      // Legacy session with no claim yet (e.g. account created before this
+      // backend existed) — backfill it as a resident via the server.
+      await callApi('/register', { body: {} });
+      const refreshed = await auth.currentUser.getIdTokenResult(true);
+      role = refreshed.claims.role || 'resident';
     }
 
+    let profile = {};
+    try {
+      const doc = await firestore.collection('users').doc(uid).get();
+      if (doc.exists) profile = doc.data();
+    } catch (err) {
+      console.warn('Could not load Firestore profile, using local cache/defaults.', err);
+    }
+
+    const cached = this.users[uid] || {};
+    const user = {
+      // Cosmetic/local-only fields carry over between sessions on this
+      // browser; nothing security-relevant is sourced from here.
+      stats: { completedCleans: 0, kgRecycled: 0, verificationRate: 100.0, festivalRank: 'New Eco-Warrior', hoursContributed: 0 },
+      badges: [{ id: 'b_new', name: 'Ibalong Pioneer', desc: 'Registered for 2026 Festival Cleanup', icon: 'fa-star', color: 'gold' }],
+      gear: ['Basic Sanitation Gloves', 'Biodegradable Segregation Bags'],
+      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      ...cached,
+      ...defaults,
+      ...profile,
+      id: uid,
+      // role ALWAYS comes from the verified custom claim, overriding
+      // anything cached locally or read from Firestore display data.
+      role,
+      roleTitle: this._roleTitle(role)
+    };
+
+    this.users[uid] = user;
     this.currentUserId = uid;
     this.save();
     this.emit('userChanged', user);
     this.emit('stateChanged');
-    return { success: true, user };
+    return user;
   }
 
-  // Switch to an existing account by ID
+  _roleTitle(role) {
+    return {
+      resident: 'Civic Guardian & Festival Reporter',
+      cleaner: 'Ibalong Eco-Warrior & Clean Specialist',
+      verifier: 'Official LGU Festival Marshall',
+      admin: 'StreetClean Administrator'
+    }[role] || 'Civic Participant';
+  }
+
+  // Switch to an existing account by ID (local multi-account testing only —
+  // does not change which Firebase Auth session is active).
   switchUser(userId) {
     if (this.users[userId]) {
       this.currentUserId = userId;
@@ -365,22 +394,37 @@ class StateManager {
     return false;
   }
 
-  // Switch active role (switches to a user with that role or updates current user's role)
-  setUserRole(roleKey) {
+  // ---------- Cleaner role: apply, don't self-grant ----------
+  // Files an application for an admin to review. Never changes the
+  // caller's own role or permissions on its own.
+  async applyForCleanerRole(note = '') {
+    const data = await callApi('/apply-cleaner', { body: { note } });
     const user = this.getUser();
-    if (user.role === roleKey) return;
-
-    // Check if another account exists with this role for easy testing
-    const matchingUser = Object.values(this.users).find(u => u.role === roleKey);
-    if (matchingUser) {
-      this.currentUserId = matchingUser.id;
-    } else {
-      user.role = roleKey;
+    if (user) {
+      user.cleanerApplicationStatus = data.status;
+      this.save();
+      this.emit('stateChanged');
     }
+    return data;
+  }
 
-    this.save();
-    this.emit('userChanged', this.getUser());
-    this.emit('stateChanged');
+  async getMyApplicationStatus() {
+    return callApi('/my-application', { method: 'GET' });
+  }
+
+  // ---------- Admin-only role management ----------
+  // The server re-checks the caller's role claim on every one of these —
+  // these client methods are a convenience, not the security boundary.
+  async adminApproveCleaner(uid) {
+    return callApi('/admin/approve-cleaner', { body: { uid } });
+  }
+
+  async adminRejectCleaner(uid, notes = '') {
+    return callApi('/admin/reject-cleaner', { body: { uid, notes } });
+  }
+
+  async adminAssignVerifier(uid) {
+    return callApi('/admin/assign-verifier', { body: { uid } });
   }
 
   getCommissions(filter = 'all') {
@@ -463,6 +507,7 @@ class StateManager {
     if (comm && comm.status === 'open') {
       comm.status = 'in_progress';
       comm.assignedTo = user.name;
+      comm.assignedToUid = user.id;
       this.save();
       this.emit('commissionClaimed', comm);
       this.emit('stateChanged');
@@ -494,51 +539,57 @@ class StateManager {
     return false;
   }
 
-  // Verify and Approve Proof of Work (Verifier Flow)
-  verifyProof(id, approved = true, notes = '') {
+  // Verify and Approve Proof of Work (Verifier Flow).
+  // The payout itself is NOT computed here — it runs server-side in a
+  // Firestore transaction (POST /api/verify-and-pay), which is the only
+  // code path allowed to move wallet balances. This just mirrors the
+  // result into local state for immediate UI feedback and throws on
+  // failure so the caller can show an error instead of silently no-op'ing.
+  async verifyProof(id, approved = true, notes = '') {
     const comm = this.getCommissionById(id);
+    if (!comm) throw new Error('Commission not found.');
 
-    if (comm && comm.status === 'in_review') {
-      if (approved) {
-        comm.status = 'completed';
-        comm.votes.approve = 3;
+    const result = await callApi('/verify-and-pay', {
+      body: { commissionId: id, approved, notes }
+    });
 
-        // Reward assigned cleaner if found
-        const assignedCleaner = Object.values(this.users).find(u => u.name === comm.assignedTo) || this.users['usr_cleaner_01'];
-        if (assignedCleaner) {
-          assignedCleaner.phpBalance += comm.rewardPhp;
-          assignedCleaner.cleanPoints += comm.cleanPoints;
-          assignedCleaner.stats.completedCleans += 1;
-          assignedCleaner.stats.kgRecycled += (comm.proofData ? comm.proofData.weightRecordedKg : comm.estimatedWeightKg);
-        }
+    if (approved) {
+      comm.status = 'completed';
+      comm.votes.approve = 3;
 
-        // Record payout transaction
-        this.transactions.unshift({
-          id: `TX-PH-${Math.floor(1000 + Math.random() * 9000)}`,
-          type: 'bounty_payout',
-          title: `Bounty Payout: ${comm.title}`,
-          reference: comm.id,
-          amountPhp: comm.rewardPhp,
-          points: comm.cleanPoints,
-          status: 'completed',
-          date: 'Today',
-          time: 'Just now',
-          channel: 'GCash Instant Payout (LGU Escrow)'
-        });
-
-        this.save();
-        this.emit('proofApproved', comm);
-      } else {
-        comm.status = 'in_progress';
-        comm.imageAfter = null;
-        comm.rejectNotes = notes || 'Litter residue still visible in background. Please re-sweep.';
-        this.save();
-        this.emit('proofRejected', comm);
+      const assignedCleaner = comm.assignedToUid ? this.users[comm.assignedToUid] : null;
+      if (assignedCleaner) {
+        assignedCleaner.phpBalance = (assignedCleaner.phpBalance || 0) + comm.rewardPhp;
+        assignedCleaner.cleanPoints = (assignedCleaner.cleanPoints || 0) + comm.cleanPoints;
+        assignedCleaner.stats.completedCleans += 1;
+        assignedCleaner.stats.kgRecycled += (comm.proofData ? comm.proofData.weightRecordedKg : comm.estimatedWeightKg);
       }
-      this.emit('stateChanged');
-      return true;
+
+      this.transactions.unshift({
+        id: `TX-PH-${Math.floor(1000 + Math.random() * 9000)}`,
+        type: 'bounty_payout',
+        title: `Bounty Payout: ${comm.title}`,
+        reference: comm.id,
+        amountPhp: comm.rewardPhp,
+        points: comm.cleanPoints,
+        status: 'completed',
+        date: 'Today',
+        time: 'Just now',
+        channel: 'GCash Instant Payout (LGU Escrow)'
+      });
+
+      this.save();
+      this.emit('proofApproved', comm);
+    } else {
+      comm.status = 'in_progress';
+      comm.imageAfter = null;
+      comm.rejectNotes = notes || 'Litter residue still visible in background. Please re-sweep.';
+      this.save();
+      this.emit('proofRejected', comm);
     }
-    return false;
+
+    this.emit('stateChanged');
+    return result;
   }
 
   // Cashout via GCash or Maya

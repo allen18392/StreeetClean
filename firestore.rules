@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // The ONLY source of truth for authorization. Never read
+    // resource.data.role for permission checks — that's client-editable.
+    function role() {
+      return request.auth.token.role;
+    }
+
+    function isAdmin() {
+      return signedIn() && role() == 'admin';
+    }
+
+    match /users/{uid} {
+      // Profiles are readable by any signed-in user (names/avatars shown
+      // across the app — commission "assignedTo", leaderboards, etc).
+      allow read: if signedIn();
+
+      // Owners can edit their own display fields, but NEVER the fields
+      // that grant privilege or move money. Those only change via the
+      // server (Admin SDK writes bypass rules entirely).
+      allow update: if signedIn() && request.auth.uid == uid &&
+        !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['role', 'roleTitle', 'phpBalance', 'cleanPoints',
+                   'stakedPoints', 'escrowLockedPhp', 'stats']);
+
+      // Document creation happens server-side on /api/register.
+      allow create: if false;
+      allow delete: if false;
+    }
+
+    match /cleanerApplications/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // Applying happens through /api/apply-cleaner (server-side) so the
+      // status field can't be self-approved. Block direct client writes.
+      allow write: if false;
+    }
+
+    match /commissions/{id} {
+      allow read: if true; // public festival map/board
+
+      // Reporting a new hotspot: any signed-in resident.
+      allow create: if signedIn();
+
+      // Claiming an open job: any cleaner, only onto themselves.
+      allow update: if signedIn() && role() == 'cleaner' &&
+        resource.data.status == 'open' &&
+        request.resource.data.status == 'in_progress' &&
+        request.resource.data.assignedToUid == request.auth.uid;
+
+      // Submitting proof: only the cleaner already assigned to it.
+      allow update: if signedIn() && role() == 'cleaner' &&
+        resource.data.status == 'in_progress' &&
+        resource.data.assignedToUid == request.auth.uid &&
+        request.resource.data.status == 'in_review';
+
+      // Final verify + payout is NOT allowed from the client at all —
+      // it only happens through POST /api/verify-and-pay, which uses
+      // the Admin SDK and bypasses these rules deliberately.
+    }
+
+    match /transactions/{id} {
+      allow read: if signedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false; // server-only, written by verify-and-pay
+    }
+  }
+}
