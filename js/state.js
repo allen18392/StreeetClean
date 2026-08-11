@@ -194,22 +194,23 @@ class StateManager {
   }
 
   async loginUser(identifier, password) {
-    const email = identifier.trim().toLowerCase();
+  const email = identifier.trim().toLowerCase();
 
-    let cred;
-    try {
-      cred = await auth.signInWithEmailAndPassword(email, password);
-    } catch (err) {
-      return { success: false, message: humanizeFirebaseError(err) };
-    }
-
-    // app.js will call initializeForFirebaseUser through onAuthStateChanged.
-    this.currentUserId = cred.user.uid;
-    return { success: true, user: this.getUser() || makeUserProfile(cred.user.uid, {
-      name: cred.user.displayName || email.split('@')[0],
-      email
-    }) };
+  let cred;
+  try {
+    cred = await auth.signInWithEmailAndPassword(email, password);
+  } catch (err) {
+    return { success: false, message: humanizeFirebaseError(err) };
   }
+
+  // Load the profile now instead of waiting on the separate
+  // onAuthStateChanged listener in app.js — that listener runs
+  // asynchronously and can race with the post-login redirect,
+  // bouncing the user back to #/auth before their profile loads.
+  await this.initializeForFirebaseUser(cred.user);
+
+  return { success: true, user: this.getUser() };
+}
 
   async setUserRole(roleKey) {
     const user = this.getUser();
