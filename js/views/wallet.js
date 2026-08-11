@@ -45,10 +45,6 @@ window.WalletView = {
               <!-- Quick Stats Grid -->
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 1.25rem; background: #ffffff; padding: 10px; border-radius: var(--radius-md); border: 1px solid #e2e8f0;">
                 <div>
-                  <div style="font-size: 0.65rem; color: #64748b; font-weight: 600;">Locked in Escrow</div>
-                  <div class="font-mono" style="font-size: 1rem; font-weight: 800; color: #0284c7;">₱${user.escrowLockedPhp.toFixed(2)}</div>
-                </div>
-                <div>
                   <div style="font-size: 0.65rem; color: #64748b; font-weight: 600;">Cleans Completed</div>
                   <div class="font-mono" style="font-size: 1rem; font-weight: 800; color: var(--emerald-600);">${user.stats.completedCleans} Sites</div>
                 </div>

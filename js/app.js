@@ -311,7 +311,7 @@ window.openCommissionDetails = (id) => {
       <!-- Action Area -->
       ${comm.status === 'open' ? `
         <button class="btn btn-gold btn-block" onclick="window.claimTask('${comm.id}')">
-          <i class="fa-solid fa-hand-holding-dollar"></i> Claim Task & Lock Bounty (₱${comm.rewardPhp})
+          <i class="fa-solid fa-hand-holding-dollar"></i> Claim Cleanup Task (₱${comm.rewardPhp})
         </button>
       ` : ''}
 
@@ -323,7 +323,7 @@ window.openCommissionDetails = (id) => {
 
       ${comm.status === 'in_review' ? `
         <div class="card" style="padding: 10px; background: #ffedd5; border: 1px solid #fed7aa; text-align: center; color: #c2410c; font-weight: 700; font-size: 0.85rem;">
-          <i class="fa-solid fa-hourglass-half"></i> Under Inspection by Legazpi Marshall. Escrow releases upon approval.
+          <i class="fa-solid fa-hourglass-half"></i> Under Inspection by Legazpi Marshall. Reward is paid after approval.
         </div>
       ` : ''}
 
@@ -384,11 +384,13 @@ window.openSubmitProofForm = (id) => {
 
       <div class="form-group">
         <label class="form-label">After-Cleanup Photo</label>
-        <div class="upload-dropzone" onclick="window.showToast('After Photo snapshot attached!', 'success')">
+        <input id="proof-photo-input" type="file" accept="image/*" capture="environment" style="display:none" onchange="window.handleProofPhotoSelect(this)">
+        <button type="button" class="upload-dropzone" style="width:100%; border:0; cursor:pointer;" onclick="document.getElementById('proof-photo-input').click()">
           <div class="upload-icon"><i class="fa-solid fa-camera"></i></div>
-          <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Tap to Snap Pristine Site Photo</div>
-          <div style="font-size: 0.72rem; color: #64748b;">EXIF timestamp will be verified by LGU</div>
-        </div>
+          <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Take After Photo or Choose From Device</div>
+          <div style="font-size: 0.72rem; color: #64748b;">JPG, PNG, WEBP • maximum 10 MB</div>
+        </button>
+        <div id="proof-photo-preview" style="margin-top:10px;"></div>
       </div>
 
       <div class="form-group">
@@ -415,23 +417,76 @@ window.openSubmitProofForm = (id) => {
   window.openModal(modalHtml);
 };
 
-window.submitProofAction = (id) => {
+window._proofPhotoFile = null;
+
+window.handleProofPhotoSelect = (input) => {
+  const file = input?.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    window.showToast('Please choose an image file.', 'error');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    window.showToast('Image must be 10 MB or smaller.', 'error');
+    return;
+  }
+
+  window._proofPhotoFile = file;
+  const preview = document.getElementById('proof-photo-preview');
+  if (preview) {
+    preview.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;background:#f0fdf4;padding:10px;border-radius:12px;border:1px solid #bbf7d0;">
+        <img src="${URL.createObjectURL(file)}" alt="Selected cleanup proof" style="width:64px;height:64px;object-fit:cover;border-radius:10px;">
+        <div style="min-width:0;">
+          <div style="font-size:.78rem;font-weight:800;color:#0f172a;">${file.name}</div>
+          <div style="font-size:.7rem;color:#64748b;">Ready to upload</div>
+        </div>
+      </div>`;
+  }
+};
+
+window.submitProofAction = async (id) => {
   const weight = document.getElementById('proof-weight')?.value || 30;
   const manifest = document.getElementById('proof-manifest')?.value || 'LGU-MRF-2026-092';
   const notes = document.getElementById('proof-notes')?.value || '';
+  const file = window._proofPhotoFile;
+  const submitButton = document.querySelector('.modal-card .btn-primary.btn-block');
 
-  const success = window.appState.submitProof(id, {
-    weightKg: weight,
-    manifestId: manifest,
-    notes: notes,
-    imageAfter: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80'
-  });
+  if (!file) {
+    window.showToast('Please upload an after-cleanup photo first.', 'error');
+    return;
+  }
 
-  if (success) {
-    window.soundSystem.success();
-    window.closeModal();
-    window.showToast('Proof submitted! Verifiers have been notified for audit.', 'success');
-    window.renderRoute();
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading Photo...';
+  }
+
+  try {
+    const user = window.appState.getUser();
+    const imageAfter = await window.uploadImageFile(file);
+
+    const success = window.appState.submitProof(id, {
+      weightKg: weight,
+      manifestId: manifest,
+      notes: notes,
+      imageAfter
+    });
+
+    if (success) {
+      window._proofPhotoFile = null;
+      window.soundSystem.success();
+      window.closeModal();
+      window.showToast('Proof photo uploaded! Verifiers have been notified.', 'success');
+      window.renderRoute();
+    }
+  } catch (err) {
+    console.error('Proof photo upload failed:', err);
+    window.showToast(err.message || 'Could not upload the proof photo.', 'error');
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit to LGU Verifiers';
+    }
   }
 };
 

@@ -53,7 +53,6 @@ function makeUserProfile(uid, data = {}) {
     phpBalance: Number(data.phpBalance || 0),
     cleanPoints: Number(data.cleanPoints || 0),
     stakedPoints: Number(data.stakedPoints || 0),
-    escrowLockedPhp: Number(data.escrowLockedPhp || 0),
     createdAt: data.createdAt || null,
     stats: {
       completedCleans: Number(data.stats?.completedCleans || 0),
@@ -344,9 +343,7 @@ class StateManager {
       reportedBy: user.name,
       reportedById: user.id,
       reportedAt: 'Just now',
-      sponsor: reportData.fundingSource === 'wallet'
-        ? `${user.name} (Resident Pledged)`
-        : 'Community Clean Fund',
+      sponsor: 'Community Clean Fund',
       imageBefore: reportData.imageUrl || null,
       imageAfter: null,
       description: reportData.description || '',
@@ -356,28 +353,7 @@ class StateManager {
 
     this.commissions.unshift(newCommission);
 
-    firestore.collection('reports').doc(newId).set(newCommission).then(async () => {
-      if (reportData.fundingSource === 'wallet' && user.phpBalance >= reward && reward > 0) {
-        user.phpBalance -= reward;
-        user.escrowLockedPhp += reward;
-
-        const tx = {
-          id: `TX-PH-${Date.now()}`,
-          type: 'bounty_pledge',
-          title: `Pledge: ${newCommission.title}`,
-          reference: newCommission.id,
-          amountPhp: -reward,
-          points: 0,
-          status: 'completed',
-          date: 'Today',
-          time: 'Just now',
-          channel: 'Resident Civic Wallet'
-        };
-
-        await this.persistUser(user);
-        this.transactions.unshift({ ...tx, userId: user.id });
-        await this.addTransaction(user.id, tx);
-      }
+    firestore.collection('reports').doc(newId).set(newCommission).then(() => {
       this.emit('stateChanged');
     }).catch(err => {
       console.error('Could not save report to Firestore:', err.code || err.message || err);
