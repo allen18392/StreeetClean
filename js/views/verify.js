@@ -207,7 +207,7 @@ window.VerifyView = {
   approveProof(id) {
     const success = window.appState.verifyProof(id, true);
     if (success) {
-      window.soundSystem.fanfare();
+      window.soundSystem.success();
       window.showToast('Escrow Payout Approved! ₱ Bounty & Clean Points released to cleaner.', 'gold');
       window.renderRoute();
     }
