@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>StreetClean | Ibalong Festival 2026 Legazpi City</title>
+  <meta name="description" content="Official community cleanup and civic bounty platform for the Ibalong Festival 2026 in Legazpi City, Albay. Spot hotspots, claim bounties, and audit cleanups.">
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- Favicon Icon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%230d9488'/><path d='M30 65 C30 45 45 35 65 30 C65 50 50 60 30 65 Z' fill='%23fbbf24'/></svg>">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Leaflet CSS for Dark Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Core App Stylesheets -->
+  <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+  <!-- App Wrapper Shell -->
+  <div class="app-wrapper">
+
+    <!-- Mobile Device Simulation Notch (Active in Mobile Frame Mode) -->
+    <div class="mobile-device-notch">
+      <div class="device-island-pill">
+        <span><i class="fa-solid fa-masks-theater"></i> Ibalong 2026</span>
+        <span>9:41</span>
+      </div>
+    </div>
+
+    <!-- Site Navigation Header -->
+    <header class="site-header" id="site-header">
+      <div class="app-container">
+        <div class="header-inner">
+          
+          <!-- Brand Logo -->
+          <a href="#/" class="brand-logo" onclick="window.soundSystem.click()">
+            <div class="brand-icon">
+              <i class="fa-solid fa-leaf"></i>
+            </div>
+            <span>Street<span class="gradient-text">Clean</span></span>
+            <span class="brand-tag">Ibalong 2026</span>
+          </a>
+
+          <!-- Center Flex: Role Switcher & Desktop Navigation Links -->
+          <div class="header-center-nav">
+            <!-- Interactive Role Switcher Pill -->
+            <div class="role-pill-selector">
+              <button class="role-pill-btn role-cleaner active" onclick="window.switchRole('cleaner')">
+                <i class="fa-solid fa-broom"></i> Cleaner
+              </button>
+              <button class="role-pill-btn role-resident" onclick="window.switchRole('resident')">
+                <i class="fa-solid fa-camera"></i> Resident
+              </button>
+              <button class="role-pill-btn role-verifier" onclick="window.switchRole('verifier')">
+                <i class="fa-solid fa-shield-halved"></i> Verifier
+              </button>
+            </div>
+
+            <!-- Desktop Navigation Links -->
+            <ul class="desktop-nav-links" id="desktop-nav">
+              <li><a href="#/" class="desktop-nav-link active" onclick="window.soundSystem.click()"><i class="fa-solid fa-house"></i> Home</a></li>
+              <li><a href="#/commissions" class="desktop-nav-link" onclick="window.soundSystem.click()"><i class="fa-solid fa-list-check"></i> Tasks</a></li>
+              <li><a href="#/report" class="desktop-nav-link" onclick="window.soundSystem.click()"><i class="fa-solid fa-camera"></i> Report</a></li>
+              <li><a href="#/verify" class="desktop-nav-link" onclick="window.soundSystem.click()"><i class="fa-solid fa-shield-halved"></i> Verification</a></li>
+              <li><a href="#/wallet" class="desktop-nav-link" onclick="window.soundSystem.click()"><i class="fa-solid fa-vault"></i> Wallet</a></li>
+              <li><a href="#/dashboard" class="desktop-nav-link" onclick="window.soundSystem.click()"><i class="fa-solid fa-chart-line"></i> Analytics</a></li>
+            </ul>
+          </div>
+
+          <!-- Header Actions -->
+          <div class="header-actions">
+            <!-- Mobile Frame Simulation Toggle -->
+            <button class="device-toggle-btn" id="device-toggle-btn" title="Toggle Mobile Device Frame Simulation" onclick="window.toggleMobileFrame()">
+              <i class="fa-solid fa-mobile-screen"></i>
+            </button>
+
+            <!-- User Profile Quick Chip -->
+            <a href="#/profile" class="user-quick-chip" id="header-user-chip" onclick="window.soundSystem.click()">
+              <!-- Dynamic Injection -->
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- Dynamic Page Content Root -->
+    <main id="app-root">
+      <!-- Injected by SPA views -->
+    </main>
+
+    <!-- Mobile-First Sticky Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+      <a href="#/" class="bottom-nav-item active" onclick="window.soundSystem.click()">
+        <i class="fa-solid fa-house"></i>
+        <span>Home</span>
+      </a>
+      
+      <a href="#/commissions" class="bottom-nav-item" onclick="window.soundSystem.click()">
+        <i class="fa-solid fa-list-check"></i>
+        <span>Tasks</span>
+      </a>
+
+      <!-- Central Gold Floating Action Button for Quick Report -->
+      <a href="#/report" class="bottom-nav-fab-wrap" onclick="window.soundSystem.click()">
+        <div class="bottom-nav-fab">
+          <i class="fa-solid fa-plus"></i>
+        </div>
+        <span class="bottom-nav-fab-label">Report</span>
+      </a>
+
+      <a href="#/verify" class="bottom-nav-item" onclick="window.soundSystem.click()">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>Verify</span>
+        <span class="nav-badge-pill" id="nav-verify-badge">1</span>
+      </a>
+
+      <a href="#/wallet" class="bottom-nav-item" onclick="window.soundSystem.click()">
+        <i class="fa-solid fa-vault"></i>
+        <span>Wallet</span>
+      </a>
+    </nav>
+
+    <!-- Universal Modal Backdrop -->
+    <div class="modal-backdrop" id="global-modal-backdrop">
+      <!-- Injected dynamically -->
+    </div>
+
+    <!-- Global Toast Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Civic Footer -->
+    <footer class="site-footer" style="background: #ffffff; border-top: 1px solid var(--border-subtle); padding: 2.25rem 0; margin-top: 3rem;">
+      <div class="app-container" style="max-width: 900px; text-align: center;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 0.75rem;">
+          <div class="brand-icon" style="width: 28px; height: 28px; font-size: 0.85rem;"><i class="fa-solid fa-leaf"></i></div>
+          <span style="font-weight: 800; font-size: 1.1rem; color: #0f172a;">Street<span class="gradient-text">Clean</span></span>
+        </div>
+
+        <div style="font-size: 0.7rem; color: #94a3b8; font-family: var(--font-mono);">
+          © 2026 StreetClean Philippines • Made for the Epic of Ibalong • Legazpi City, Albay
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Firebase SDKs by Ace-->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <!-- External Library Dependencies -->
+  <!-- Leaflet Maps -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Core StreetClean Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/map.js"></script>
+
+  <!-- SPA Views -->
+  <script src="js/views/home.js"></script>
+  <script src="js/views/commissions.js"></script>
+  <script src="js/views/report.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/verify.js"></script>
+  <script src="js/views/wallet.js"></script>
+  <script src="js/views/profile.js"></script>
+  <script src="js/views/auth.js"></script>
+
+  <!-- Main Controller -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>
