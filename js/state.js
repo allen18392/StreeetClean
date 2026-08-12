@@ -30,16 +30,6 @@ function humanizeFirebaseError(err) {
 const DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80';
 
-const TRUST_LEVELS = [
-  { threshold: 0, name: 'Trusted Newcomer', icon: 'fa-seedling' },
-  { threshold: 25, name: 'Reliable Helper', icon: 'fa-hand-holding-heart' },
-  { threshold: 75, name: 'Trusted Cleaner', icon: 'fa-badge-check' },
-  { threshold: 150, name: 'Community Guardian', icon: 'fa-shield-heart' },
-  { threshold: 300, name: 'Cleanup Champion', icon: 'fa-medal' },
-  { threshold: 500, name: 'Trusted Elite', icon: 'fa-crown' },
-  { threshold: 1000, name: 'Trust Legend', icon: 'fa-star' }
-];
-
 const WASTE_BADGES = [
   { threshold: 5, name: 'Leaf Picker', desc: 'Collected 5+ kg of waste', icon: 'fa-leaf', color: 'green' },
   { threshold: 10, name: 'Waste Scout', desc: 'Collected 10+ kg of waste', icon: 'fa-binoculars', color: 'green' },
@@ -114,14 +104,6 @@ function makeUserProfile(uid, data = {}) {
     redeemedPartnerRewards: Array.isArray(data.redeemedPartnerRewards) ? data.redeemedPartnerRewards : [],
     reputationScore: Number.isFinite(Number(data.reputationScore)) ? Number(data.reputationScore) : 50,
     reputationLevel: data.reputationLevel || 'New Cleaner',
-    trustPoints: Number(data.trustPoints || 0),
-    trustLevel: data.trustLevel || 'Trusted Newcomer',
-    trustStats: {
-      taskPoints: Number(data.trustStats?.taskPoints || data.trustPoints || 0),
-      completedTasks: Number(data.trustStats?.completedTasks || data.stats?.completedCleans || 0),
-      publicTasks: Number(data.trustStats?.publicTasks || 0),
-      reportPoints: Number(data.trustStats?.reportPoints || 0)
-    },
     reputationStats: {
       successfulCleans: Number(data.reputationStats?.successfulCleans || 0),
       publicCleans: Number(data.reputationStats?.publicCleans || 0),
@@ -430,37 +412,6 @@ class StateManager {
     return Math.max(0, Math.round((Number(comm.rewardPhp || 0) - this.getPlatformFee(comm)) * 100) / 100);
   }
 
-  getTrustLevel(points) {
-    const n = Number(points || 0);
-    return [...TRUST_LEVELS].reverse().find(level => n >= level.threshold)?.name || TRUST_LEVELS[0].name;
-  }
-
-  getTrustLevelMeta(points) {
-    const n = Number(points || 0);
-    return [...TRUST_LEVELS].reverse().find(level => n >= level.threshold) || TRUST_LEVELS[0];
-  }
-
-  getTrustLevelIndex(points) {
-    const n = Number(points || 0);
-    let index = 0;
-    TRUST_LEVELS.forEach((level, i) => { if (n >= level.threshold) index = i; });
-    return index;
-  }
-
-  getNextTrustMilestone(points) {
-    const n = Number(points || 0);
-    return TRUST_LEVELS.find(level => n < level.threshold)?.threshold || TRUST_LEVELS[TRUST_LEVELS.length - 1].threshold;
-  }
-
-  getTrustLevelStart(points) {
-    const index = this.getTrustLevelIndex(points);
-    return TRUST_LEVELS[index]?.threshold || 0;
-  }
-
-  getTrustLevels() {
-    return TRUST_LEVELS;
-  }
-
   getReputationLevel(score) {
     const n = Number(score || 0);
     if (n >= 90) return 'Trusted Cleaner';
@@ -565,7 +516,6 @@ class StateManager {
     const taskType = ['private_property', 'partner', 'public'].includes(reportData.taskType) ? reportData.taskType : 'public';
     const requestedReward = Math.max(0, Number(reportData.rewardPhp || 0));
     const requestedPoints = Math.max(0, Math.round(Number(reportData.cleanPoints || 0)));
-    const requestedTrustPoints = Math.max(1, Math.round(Number(reportData.trustPoints || 10)));
     const publicAutoReward = Math.max(50, Math.round((Number(reportData.estimatedWeightKg) || 1) * 20));
 
     let rewardType = 'money';
@@ -609,7 +559,6 @@ class StateManager {
       bountyAssignedBy: taskType === 'partner' ? reportData.partnerName || user.name : 'StreetClean Auto Reward Engine',
       bountyAssignedAt: timestampForLocalDisplay(),
       requiredReputation: taskType === 'public' ? 60 : 0,
-      trustPoints: taskType === 'public' ? requestedTrustPoints : 0,
       estimatedWeightKg: parseFloat(reportData.estimatedWeightKg) || 0,
       status,
       reportedBy: user.name,
@@ -852,16 +801,6 @@ class StateManager {
     cleaner.reputationStats.successfulCleans += 1;
     if (comm.taskType === 'public') cleaner.reputationStats.publicCleans += 1;
     const repGain = comm.taskType === 'public' ? 7 : 5;
-    const trustGain = comm.taskType === 'public' ? Math.max(1, Number(comm.trustPoints || 10)) : 0;
-    cleaner.trustPoints = Math.max(0, Number(cleaner.trustPoints || 0) + trustGain);
-    cleaner.trustStats = {
-      ...(cleaner.trustStats || {}),
-      taskPoints: Math.max(0, Number(cleaner.trustPoints || 0)),
-      completedTasks: Number(cleaner.trustStats?.completedTasks || 0) + 1,
-      publicTasks: Number(cleaner.trustStats?.publicTasks || 0) + (comm.taskType === 'public' ? 1 : 0),
-      reportPoints: Number(cleaner.trustStats?.reportPoints || 0)
-    };
-    cleaner.trustLevel = this.getTrustLevel(cleaner.trustPoints);
     cleaner.reputationScore = Math.min(100, Math.max(0, Number(cleaner.reputationScore || 50) + repGain));
     cleaner.reputationLevel = this.getReputationLevel(cleaner.reputationScore);
     const earnedWasteBadges = getWasteBadges(cleaner.stats.kgRecycled);
@@ -876,7 +815,6 @@ class StateManager {
       grossAmountPhp: moneyReward ? Number(comm.rewardPhp || 0) : 0,
       platformFeePhp: moneyReward ? Number(comm.platformFeePhp || 0) : 0,
       points: Number(comm.cleanPoints || 0),
-      trustPoints: trustGain,
       rewardType: this.getRewardType(comm),
       status: 'completed',
       date: 'Today',
@@ -901,10 +839,6 @@ class StateManager {
 
     if (cleaner.id === this.currentUserId) {
       this.transactions.unshift({ ...tx, userId: cleaner.id });
-    }
-
-    if (trustGain > 0 && cleaner.id === this.currentUserId) {
-      window.showToast?.(`+${trustGain} Trust Points earned! You are now ${cleaner.trustLevel}.`, 'success');
     }
 
     this.emit('proofApproved', comm);

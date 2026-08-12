@@ -120,10 +120,7 @@ window.updateHeaderUserChip = () => {
     chip.innerHTML = `
       <img src="${user.avatar}" class="user-quick-avatar" alt="${user.name}" />
       <div style="text-align: left; line-height: 1.1;">
-        <div class="user-quick-name">
-          <span class="user-quick-name-text">${user.name}</span>
-          ${(() => { const trust = window.appState.getTrustLevelMeta(user.trustPoints || 0); return `<span class="trust-level-badge" title="${trust.name} • ${Number(user.trustPoints || 0).toLocaleString()} Trust Points" aria-label="${trust.name}"><i class="fa-solid ${trust.icon}"></i><span class="trust-level-badge-label">${trust.name}</span></span>`; })()}
-        </div>
+        <div class="user-quick-name">${user.name}</div>
         <div class="user-quick-role">${user.role}</div>
       </div>
     `;

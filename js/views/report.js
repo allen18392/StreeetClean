@@ -13,7 +13,6 @@ window.ReportView = {
     partnerRewardDescription: 'Partner campaign points',
     rewardPhp: 500,
     cleanPoints: 500,
-    trustPoints: 10,
     sector: 'Peñaranda Park & Provincial Capitol Grounds',
     address: 'Rizal St, Old Albay District, Legazpi City',
     lat: 13.1398,
@@ -53,11 +52,6 @@ window.ReportView = {
               <button class="chip-select-btn ${this.formData.taskType === 'public' ? 'active' : ''}" type="button" onclick="window.ReportView.setTaskType('public')">🌍 Community Cleanup</button>
             </div>
             <div style="margin-top:10px;font-size:.75rem;color:#475569;line-height:1.45;">${this.formData.taskType === 'private_property' ? 'Property owner funds a cash reward. Cleaner payout is 95%; StreetClean keeps a 5% platform fee.' : (this.formData.taskType === 'partner' ? 'Partner campaigns award Clean Points that cleaners can redeem for partner coupons and discounts.' : 'Public reports are visible to everyone. Cleaners need a reputation score of 60+ and their evidence is automatically checked.')}</div>
-            ${this.formData.taskType === 'public' ? `
-              <div style="margin-top:10px;display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:10px;align-items:end;">
-                <div><label class="form-label">Cleaner Trust Points</label><input class="form-control font-mono" id="public-trust-points" type="number" min="1" step="1" value="${this.formData.trustPoints || 10}"></div>
-                <div style="font-size:.72rem;color:#475569;line-height:1.45;padding-bottom:8px;"><strong style="color:#166534;">+${Number(this.formData.trustPoints || 10)} Trust Points</strong> will be added to the cleaner's lifetime trust total after this public task is successfully verified.</div>
-              </div>` : ''}
             ${this.formData.taskType === 'private_property' ? `
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:10px;">
                 <div><label class="form-label">Property owner / manager</label><input class="form-control" id="property-owner" value="${this.formData.propertyOwner || user.name}" placeholder="Owner or property manager"></div>
@@ -283,8 +277,8 @@ window.ReportView = {
           <div style="display:flex; align-items:flex-start; gap:10px;">
             <i class="fa-solid fa-shield-halved" style="margin-top:2px;color:var(--emerald-600);"></i>
             <div>
-              <div style="font-size:.8rem;font-weight:800;margin-bottom:2px;">${this.formData.taskType === 'private_property' ? `Private property cash task • ₱${Number(this.formData.rewardPhp || 500).toFixed(2)} gross` : this.formData.taskType === 'partner' ? `Partner task • ${Number(this.formData.cleanPoints || 500).toLocaleString()} Clean Points` : `Public task • automatic cash reward + ${Number(this.formData.trustPoints || 10)} Trust Points`}</div>
-              <div style="font-size:.72rem;line-height:1.45;">${this.formData.taskType === 'private_property' ? 'The cleaner receives 95% and StreetClean receives a 5% platform fee.' : this.formData.taskType === 'partner' ? 'Points accumulate on the cleaner account and can be exchanged for partner coupons and discounts.' : `Public tasks require a reputation score of 60+ to claim. A successful cleanup adds +${Number(this.formData.trustPoints || 10)} Trust Points to the cleaner's lifetime total.`}</div>
+              <div style="font-size:.8rem;font-weight:800;margin-bottom:2px;">${this.formData.taskType === 'private_property' ? `Private property cash task • ₱${Number(this.formData.rewardPhp || 500).toFixed(2)} gross` : this.formData.taskType === 'partner' ? `Partner task • ${Number(this.formData.cleanPoints || 500).toLocaleString()} Clean Points` : 'Public task • automatic cash reward based on estimated cleanup size'}</div>
+              <div style="font-size:.72rem;line-height:1.45;">${this.formData.taskType === 'private_property' ? 'The cleaner receives 95% and StreetClean receives a 5% platform fee.' : this.formData.taskType === 'partner' ? 'Points accumulate on the cleaner account and can be exchanged for partner coupons and discounts.' : 'Public tasks require a reputation score of 60+ to claim and use timestamp/GPS/photo checks before payout.'}</div>
             </div>
           </div>
         </div>
@@ -309,9 +303,6 @@ window.ReportView = {
         this.formData.propertyOwner = document.getElementById('property-owner')?.value?.trim() || window.appState.getUser()?.name || '';
         this.formData.rewardPhp = Number(document.getElementById('private-reward')?.value || this.formData.rewardPhp || 500);
         if (!Number.isFinite(this.formData.rewardPhp) || this.formData.rewardPhp < 50) { window.showToast('Private property rewards must be at least ₱50.', 'error'); return; }
-      }
-      if (this.formData.taskType === 'public') {
-        this.formData.trustPoints = Math.max(1, Math.round(Number(document.getElementById('public-trust-points')?.value || this.formData.trustPoints || 10)));
       }
       if (this.formData.taskType === 'partner') {
         this.formData.partnerName = document.getElementById('partner-name')?.value?.trim() || 'StreetClean Partner';
@@ -458,7 +449,6 @@ window.ReportView = {
         rewardPhp: this.formData.rewardPhp,
         partnerName: this.formData.partnerName,
         cleanPoints: this.formData.cleanPoints,
-        trustPoints: this.formData.trustPoints,
         partnerRewardDescription: this.formData.partnerRewardDescription
       });
 
