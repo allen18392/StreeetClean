@@ -100,15 +100,15 @@ window.WalletView = {
           <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem; background: #ffffff;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
               <h3 style="font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 8px; color: #0f172a;">
-                <i class="fa-solid fa-trophy" style="color: #b45309;"></i> Ibalong 2026 Eco-Warrior Leaderboard
+                <i class="fa-solid fa-trophy" style="color: #b45309;"></i> Ibalong 2026 Waste Collection Leaderboard
               </h3>
-              <span style="font-size: 0.75rem; color: #b45309; font-weight: 700;">Top Festival Cleaners</span>
+              <span style="font-size: 0.75rem; color: #b45309; font-weight: 700;">Ranked by Waste Collected</span>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 8px;">
               ${window.appState.getAllUsersList()
-                .filter(u => u.role === 'cleaner')
-                .sort((a, b) => Number(b.stats?.completedCleans || 0) - Number(a.stats?.completedCleans || 0))
+                .filter(u => Number(u.stats?.kgRecycled || 0) > 0)
+                .sort((a, b) => Number(b.stats?.kgRecycled || 0) - Number(a.stats?.kgRecycled || 0))
                 .slice(0, 10)
                 .map((u, index) => `
                   <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-sm); background: ${u.id === user.id ? '#ecfdf5' : '#f8fafc'}; border: 1px solid ${u.id === user.id ? '#a7f3d0' : '#e2e8f0'};">
@@ -117,10 +117,23 @@ window.WalletView = {
                       <img src="${u.avatar}" alt="${u.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />
                       <div>
                         <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a;">${u.name}${u.id === user.id ? ' (You)' : ''}</div>
-                        <div style="font-size: 0.7rem; color: #64748b;">${u.barangay || 'Barangay not set'} • ${u.stats.completedCleans || 0} Cleans</div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px;">
+                          <span style="font-size: 0.7rem; color: #64748b;">${u.barangay || 'Barangay not set'} • ${u.stats.completedCleans || 0} Cleans</span>
+                        </div>
                       </div>
                     </div>
-                    <div class="font-mono" style="font-weight: 800; color: ${u.id === user.id ? 'var(--emerald-700)' : '#475569'}; font-size: 0.9rem;">₱${Number(u.phpBalance || 0).toFixed(0)}</div>
+                    <div style="display:flex;align-items:flex-end;gap:8px;flex-direction:column;text-align:right;">
+                      ${(() => {
+                        const kg = Number(u.stats?.kgRecycled || 0);
+                        const earned = getWasteBadges(kg);
+                        const badge = earned.length ? earned[earned.length - 1] : null;
+                        return badge
+                          ? `<span title="${badge.desc}" style="display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:${badge.color === 'gold' ? '#fffbeb' : '#f0fdf4'};border:1px solid ${badge.color === 'gold' ? '#fde68a' : '#bbf7d0'};color:${badge.color === 'gold' ? '#a16207' : '#166534'};font-size:.62rem;font-weight:900;white-space:nowrap;"><i class="fa-solid ${badge.icon}"></i>${badge.name}</span>`
+                          : `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;color:#94a3b8;font-size:.62rem;font-weight:800;white-space:nowrap;"><i class="fa-solid fa-lock"></i>No badge yet</span>`;
+                      })()}
+                      <div class="font-mono" style="font-weight: 900; color: ${u.id === user.id ? 'var(--emerald-700)' : '#475569'}; font-size: 0.95rem;">${Number(u.stats?.kgRecycled || 0).toFixed(2)} kg</div>
+                      <div style="font-size:.62rem;color:#94a3b8;font-weight:700;text-transform:uppercase;">waste collected</div>
+                    </div>
                   </div>
                 `).join('') || `
                   <div style="padding: 1rem; text-align: center; color: #64748b; font-size: 0.8rem;">

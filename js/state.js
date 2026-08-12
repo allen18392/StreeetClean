@@ -30,6 +30,20 @@ function humanizeFirebaseError(err) {
 const DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80';
 
+const WASTE_BADGES = [
+  { threshold: 5, name: 'Leaf Picker', desc: 'Collected 5+ kg of waste', icon: 'fa-leaf', color: 'green' },
+  { threshold: 10, name: 'Waste Scout', desc: 'Collected 10+ kg of waste', icon: 'fa-binoculars', color: 'green' },
+  { threshold: 20, name: 'Eco Collector', desc: 'Collected 20+ kg of waste', icon: 'fa-recycle', color: 'green' },
+  { threshold: 30, name: 'Green Guardian', desc: 'Collected 30+ kg of waste', icon: 'fa-shield-heart', color: 'green' },
+  { threshold: 40, name: 'Cleanup Champion', desc: 'Collected 40+ kg of waste', icon: 'fa-medal', color: 'gold' },
+  { threshold: 50, name: 'Earth Steward', desc: 'Collected 50+ kg of waste', icon: 'fa-earth-asia', color: 'gold' }
+];
+
+function getWasteBadges(kg) {
+  const total = Number(kg || 0);
+  return WASTE_BADGES.filter(b => total >= b.threshold);
+}
+
 function makeUserProfile(uid, data = {}) {
   const role = data.role || 'cleaner';
   const roleTitles = {
@@ -61,7 +75,7 @@ function makeUserProfile(uid, data = {}) {
       festivalRank: data.stats?.festivalRank || 'New Eco-Warrior',
       hoursContributed: Number(data.stats?.hoursContributed || 0)
     },
-    badges: Array.isArray(data.badges) ? data.badges : [],
+    badges: getWasteBadges(Number(data.stats?.kgRecycled || 0)).length ? getWasteBadges(Number(data.stats?.kgRecycled || 0)) : (Array.isArray(data.badges) ? data.badges : []),
     gear: Array.isArray(data.gear) ? data.gear : [],
     redeemedPartnerRewards: Array.isArray(data.redeemedPartnerRewards) ? data.redeemedPartnerRewards : []
   };
@@ -579,6 +593,8 @@ class StateManager {
     }
     cleaner.stats.completedCleans += 1;
     cleaner.stats.kgRecycled += Number(comm.proofData?.weightRecordedKg || comm.estimatedWeightKg || 0);
+    const earnedWasteBadges = getWasteBadges(cleaner.stats.kgRecycled);
+    cleaner.badges = earnedWasteBadges.length ? earnedWasteBadges : (cleaner.badges || []);
 
     const tx = {
       id: `TX-PH-${Date.now()}`,

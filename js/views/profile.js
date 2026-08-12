@@ -56,21 +56,28 @@ window.ProfileView = {
           <!-- Earned Badges & Honors -->
           <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem; background: #ffffff;">
             <h3 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem; color: #0f172a;">
-              <i class="fa-solid fa-award" style="color: #b45309;"></i> Ibalong 2026 Civic Badges & Certifications
+              <i class="fa-solid fa-award" style="color: #b45309;"></i> Garbage Collection Badges
             </h3>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-              ${user.badges.map(b => `
-                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: var(--radius-md); background: #f8fafc; border: 1px solid #e2e8f0;">
-                  <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: ${b.color === 'gold' ? '#fef3c7' : '#dcfce7'}; color: ${b.color === 'gold' ? '#b45309' : 'var(--emerald-700)'}; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+              ${WASTE_BADGES.map(b => {
+                const unlocked = Number(user.stats?.kgRecycled || 0) >= b.threshold;
+                return `
+                <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-md);background:${unlocked ? (b.color === 'gold' ? '#fffbeb' : '#f0fdf4') : '#f8fafc'};border:1px solid ${unlocked ? (b.color === 'gold' ? '#fde68a' : '#bbf7d0') : '#e2e8f0'};opacity:${unlocked ? '1' : '.72'};">
+                  <div style="position:relative;width:40px;height:40px;flex:0 0 40px;border-radius:var(--radius-sm);background:${unlocked ? (b.color === 'gold' ? '#fef3c7' : '#dcfce7') : '#e2e8f0'};color:${unlocked ? (b.color === 'gold' ? '#b45309' : 'var(--emerald-700)') : '#94a3b8'};display:flex;align-items:center;justify-content:center;font-size:1.1rem;">
                     <i class="fa-solid ${b.icon}"></i>
+                    ${unlocked ? '<span style="position:absolute;right:-5px;bottom:-5px;width:17px;height:17px;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.55rem;border:2px solid #fff;"><i class="fa-solid fa-check"></i></span>' : ''}
                   </div>
-                  <div>
-                    <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a;">${b.name}</div>
-                    <div style="font-size: 0.7rem; color: #64748b;">${b.desc}</div>
+                  <div style="min-width:0;flex:1;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <span style="font-weight:800;font-size:.85rem;color:#0f172a;">${b.name}</span>
+                      <span style="font-size:.62rem;font-weight:900;color:${unlocked ? '#166534' : '#64748b'};background:${unlocked ? '#dcfce7' : '#e2e8f0'};padding:2px 6px;border-radius:999px;text-transform:uppercase;">${unlocked ? 'Earned' : 'Locked'}</span>
+                    </div>
+                    <div style="font-size:.7rem;color:#64748b;">${b.desc}</div>
+                    <div style="font-size:.62rem;font-weight:800;color:#94a3b8;margin-top:2px;">${b.threshold} kg milestone</div>
                   </div>
-                </div>
-              `).join('')}
+                </div>`;
+              }).join('')}
             </div>
           </div>
 
