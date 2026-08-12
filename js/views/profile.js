@@ -53,6 +53,36 @@ window.ProfileView = {
             </div>
           </div>
 
+          <!-- Trust Credits & Level -->
+          <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem; background: #ffffff; border: 1px solid #fde68a;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+              <div>
+                <h3 style="font-size: 0.98rem; font-weight: 800; margin-bottom: 4px; color: #0f172a;"><i class="fa-solid fa-shield-heart" style="color:#b45309;"></i> Trust Credits</h3>
+                <div style="font-size:.72rem;color:#64748b;">Earn Trust Credits by completing tasks successfully.</div>
+              </div>
+              <div style="text-align:right;"><div style="font-size:1.35rem;font-weight:900;color:#0f172a;">${Number(user.reputationScore || 50)}/100</div><div style="font-size:.68rem;font-weight:800;color:#b45309;">${user.reputationLevel || window.appState.getReputationLevel(user.reputationScore)}</div></div>
+            </div>
+            <div style="margin-top:12px; height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden; border:1px solid #cbd5e1;">
+              <div style="height:100%; width:${Math.max(0, Math.min(100, Number(user.reputationScore || 50)))}%; background:linear-gradient(90deg,#f59e0b,#16a34a); border-radius:999px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-top:5px;font-size:.62rem;color:#64748b;font-weight:700;"><span>0 Not Trusted</span><span>75 Trusted</span><span>90 Very Trusted</span><span>100</span></div>
+          </div>
+
+          <!-- Trust Credit Badges -->
+          <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem; background: #ffffff;">
+            <h3 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem; color: #0f172a;"><i class="fa-solid fa-medal" style="color: #b45309;"></i> Trust Credit Badges</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;">
+              ${TRUST_BADGES.map(b => {
+                const unlocked = Number(user.reputationScore || 50) >= b.threshold;
+                const isGold = b.tone === 'gold';
+                return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-md);background:${unlocked ? (isGold ? '#fffbeb' : '#f0fdf4') : '#f8fafc'};border:1px solid ${unlocked ? (isGold ? '#fde68a' : '#bbf7d0') : '#e2e8f0'};opacity:${unlocked ? '1' : '.72'};">
+                  <div style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:${unlocked ? (isGold ? '#fef3c7' : '#dcfce7') : '#e2e8f0'};color:${unlocked ? (isGold ? '#b45309' : '#166534') : '#94a3b8'};display:flex;align-items:center;justify-content:center;font-size:1.12rem;"><i class="fa-solid ${b.icon}"></i></div>
+                  <div style="min-width:0;flex:1;"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="font-weight:800;font-size:.84rem;color:#0f172a;">${b.name}</span><span style="font-size:.6rem;font-weight:900;color:${unlocked ? '#166534' : '#64748b'};background:${unlocked ? '#dcfce7' : '#e2e8f0'};padding:2px 6px;border-radius:999px;text-transform:uppercase;">${unlocked ? 'Earned' : 'Locked'}</span></div><div style="font-size:.68rem;color:#64748b;">${b.desc}</div></div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+
           <!-- Earned Badges & Honors -->
           <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem; background: #ffffff;">
             <h3 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem; color: #0f172a;">

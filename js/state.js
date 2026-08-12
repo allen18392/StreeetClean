@@ -39,6 +39,20 @@ const WASTE_BADGES = [
   { threshold: 50, name: 'Earth Steward', desc: 'Collected 50+ kg of waste', icon: 'fa-earth-asia', color: 'gold' }
 ];
 
+
+const TRUST_BADGES = [
+  { threshold: 25, name: 'Trust Starter', desc: 'Reached 25 Trust Credits', icon: 'fa-seedling', tone: 'green' },
+  { threshold: 50, name: 'Reliable Cleaner', desc: 'Reached 50 Trust Credits', icon: 'fa-handshake', tone: 'green' },
+  { threshold: 75, name: 'Trusted Cleaner', desc: 'Reached 75 Trust Credits', icon: 'fa-shield-heart', tone: 'gold' },
+  { threshold: 90, name: 'Very Trusted', desc: 'Reached 90 Trust Credits', icon: 'fa-certificate', tone: 'gold' },
+  { threshold: 100, name: 'StreetClean Legend', desc: 'Reached the maximum 100 Trust Credits', icon: 'fa-crown', tone: 'gold' }
+];
+
+function getTrustBadges(score) {
+  const total = Math.max(0, Math.min(100, Number(score || 0)));
+  return TRUST_BADGES.filter(b => total >= b.threshold);
+}
+
 function getWasteBadges(kg) {
   const total = Number(kg || 0);
   return WASTE_BADGES.filter(b => total >= b.threshold);
@@ -109,7 +123,8 @@ function makeUserProfile(uid, data = {}) {
       publicCleans: Number(data.reputationStats?.publicCleans || 0),
       failedAudits: Number(data.reputationStats?.failedAudits || 0),
       duplicateFlags: Number(data.reputationStats?.duplicateFlags || 0)
-    }
+    },
+    trustBadges: getTrustBadges(Number(data.reputationScore || 50))
   };
 }
 
@@ -759,6 +774,7 @@ class StateManager {
         cleaner.reputationStats.failedAudits += 1;
         cleaner.reputationScore = Math.max(0, Number(cleaner.reputationScore || 50) - 8);
         cleaner.reputationLevel = this.getReputationLevel(cleaner.reputationScore);
+        cleaner.trustBadges = getTrustBadges(cleaner.reputationScore);
       }
       firestore.collection('reports').doc(comm.id).update({
         status: comm.status,
@@ -803,6 +819,7 @@ class StateManager {
     const repGain = comm.taskType === 'public' ? 7 : 5;
     cleaner.reputationScore = Math.min(100, Math.max(0, Number(cleaner.reputationScore || 50) + repGain));
     cleaner.reputationLevel = this.getReputationLevel(cleaner.reputationScore);
+    cleaner.trustBadges = getTrustBadges(cleaner.reputationScore);
     const earnedWasteBadges = getWasteBadges(cleaner.stats.kgRecycled);
     cleaner.badges = earnedWasteBadges.length ? earnedWasteBadges : (cleaner.badges || []);
 
