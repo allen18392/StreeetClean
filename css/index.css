@@ -553,13 +553,59 @@ body.mode-mobile-frame .site-footer {
 }
 
 .user-quick-name {
+  min-width: 0;
+  max-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.8rem;
   font-weight: 700;
   color: #0f172a;
-  max-width: 90px;
+  line-height: 1.1;
   white-space: nowrap;
+}
+
+.user-quick-name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trust-level-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  width: fit-content;
+  max-width: 108px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  font-size: 0.55rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+  align-self: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.trust-level-badge i {
+  flex: 0 0 auto;
+  font-size: 0.56rem;
+}
+
+.trust-level-badge-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-quick-role {
@@ -659,10 +705,47 @@ body.mode-mobile-frame .site-footer {
   }
 
   .user-quick-chip {
-    padding-right: 5px;
+    min-width: 0;
+    max-width: min(58vw, 230px);
+    padding: 3px 5px 3px 3px;
+    gap: 5px;
+  }
+
+  .user-quick-avatar {
+    width: 25px;
+    height: 25px;
   }
 
   .user-quick-chip > div {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .user-quick-name {
+    max-width: 100%;
+    gap: 4px;
+    font-size: 0.69rem;
+  }
+
+  .user-quick-name-text {
+    max-width: clamp(54px, 24vw, 110px);
+  }
+
+  .trust-level-badge {
+    max-width: 72px;
+    height: 15px;
+    padding: 0 4px;
+    gap: 2px;
+    font-size: 0.44rem;
+    border-width: 1px;
+  }
+
+  .trust-level-badge i {
+    font-size: 0.46rem;
+  }
+
+  .user-quick-role {
     display: none;
   }
 

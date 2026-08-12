@@ -7,6 +7,13 @@ window.ReportView = {
   currentStep: 1,
   formData: {
     title: '',
+    taskType: 'public',
+    propertyOwner: '',
+    partnerName: 'EcoMart',
+    partnerRewardDescription: 'Partner campaign points',
+    rewardPhp: 500,
+    cleanPoints: 500,
+    trustPoints: 10,
     sector: 'Peñaranda Park & Provincial Capitol Grounds',
     address: 'Rizal St, Old Albay District, Legazpi City',
     lat: 13.1398,
@@ -30,12 +37,38 @@ window.ReportView = {
           <!-- Header -->
           <div style="margin-bottom: 1.25rem;">
             <div style="display: inline-flex; align-items: center; gap: 6px; background: #dcfce7; color: var(--emerald-800); padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.72rem; font-weight: 800; text-transform: uppercase;">
-              <i class="fa-solid fa-camera"></i> Resident Reporting Flow
+              <i class="fa-solid fa-broom"></i> Create Cleanup Task
             </div>
-            <h1 style="font-size: 1.4rem; font-weight: 800; margin-top: 6px; color: #0f172a;">Report Litter Hotspot</h1>
+            <h1 style="font-size: 1.4rem; font-weight: 800; margin-top: 6px; color: #0f172a;">Choose Task Type</h1>
             <p style="font-size: 0.82rem; color: #64748b;">
-              Pin festival litter in Legazpi City and alert local cleaners. The cleanup reward will be determined later by an authorized LGU verifier.
+              Private means a private property address, not a hidden task. Partner tasks pay Clean Points. Public tasks use reputation-based anti-fraud protection.
             </p>
+          </div>
+
+          <div class="card" style="padding:1rem 1.1rem; margin-bottom:1rem; background:#ffffff; border:1px solid #bbf7d0;">
+            <div style="font-size:.72rem;color:#64748b;text-transform:uppercase;font-weight:900;margin-bottom:8px;">Task type</div>
+            <div class="chip-group">
+              <button class="chip-select-btn ${this.formData.taskType === 'private_property' ? 'active' : ''}" type="button" onclick="window.ReportView.setTaskType('private_property')">🏠 Private Property</button>
+              <button class="chip-select-btn ${this.formData.taskType === 'partner' ? 'active' : ''}" type="button" onclick="window.ReportView.setTaskType('partner')">🤝 Partner Challenge</button>
+              <button class="chip-select-btn ${this.formData.taskType === 'public' ? 'active' : ''}" type="button" onclick="window.ReportView.setTaskType('public')">🌍 Community Cleanup</button>
+            </div>
+            <div style="margin-top:10px;font-size:.75rem;color:#475569;line-height:1.45;">${this.formData.taskType === 'private_property' ? 'Property owner funds a cash reward. Cleaner payout is 95%; StreetClean keeps a 5% platform fee.' : (this.formData.taskType === 'partner' ? 'Partner campaigns award Clean Points that cleaners can redeem for partner coupons and discounts.' : 'Public reports are visible to everyone. Cleaners need a reputation score of 60+ and their evidence is automatically checked.')}</div>
+            ${this.formData.taskType === 'public' ? `
+              <div style="margin-top:10px;display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:10px;align-items:end;">
+                <div><label class="form-label">Cleaner Trust Points</label><input class="form-control font-mono" id="public-trust-points" type="number" min="1" step="1" value="${this.formData.trustPoints || 10}"></div>
+                <div style="font-size:.72rem;color:#475569;line-height:1.45;padding-bottom:8px;"><strong style="color:#166534;">+${Number(this.formData.trustPoints || 10)} Trust Points</strong> will be added to the cleaner's lifetime trust total after this public task is successfully verified.</div>
+              </div>` : ''}
+            ${this.formData.taskType === 'private_property' ? `
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:10px;">
+                <div><label class="form-label">Property owner / manager</label><input class="form-control" id="property-owner" value="${this.formData.propertyOwner || user.name}" placeholder="Owner or property manager"></div>
+                <div><label class="form-label">Cleaner reward (₱)</label><input class="form-control font-mono" id="private-reward" type="number" min="50" step="50" value="${this.formData.rewardPhp || 500}"></div>
+              </div>` : ''}
+            ${this.formData.taskType === 'partner' ? `
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:10px;">
+                <div><label class="form-label">Partner / sponsor</label><input class="form-control" id="partner-name" value="${this.formData.partnerName}" placeholder="Business or organization"></div>
+                <div><label class="form-label">Task points</label><input class="form-control font-mono" id="partner-points" type="number" min="10" step="10" value="${this.formData.cleanPoints || 500}"></div>
+                <div style="grid-column:1/-1"><label class="form-label">Partner reward description</label><input class="form-control" id="partner-reward-desc" value="${this.formData.partnerRewardDescription}" placeholder="e.g. 500 points = ₱50 partner coupon"></div>
+              </div>` : ''}
           </div>
 
           <!-- Wizard Progress Bar -->
@@ -208,7 +241,7 @@ window.ReportView = {
       <div>
         <h2 style="font-size: 1.05rem; margin-bottom: 4px; color: #0f172a;">3. Photo Evidence</h2>
         <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.25rem;">
-          Upload clear before photos of the litter pile. An authorized LGU verifier will review the report and determine a flexible cleanup reward.
+          Upload clear before photos of the site. The task type controls the reward: cash for private/public tasks and Clean Points for partner challenges. Verification is automated from evidence, timestamps, GPS and reputation.
         </p>
 
         <!-- Real Photo Upload -->
@@ -246,12 +279,12 @@ window.ReportView = {
         </div>
 
         <!-- Reward notice -->
-        <div class="card" style="margin-top: 1rem; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e;">
+        <div class="card" style="margin-top: 1rem; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155;">
           <div style="display:flex; align-items:flex-start; gap:10px;">
-            <i class="fa-solid fa-shield-halved" style="margin-top:2px;"></i>
+            <i class="fa-solid fa-shield-halved" style="margin-top:2px;color:var(--emerald-600);"></i>
             <div>
-              <div style="font-size:.8rem;font-weight:800;margin-bottom:2px;">Reward determined by LGU / authorized verifier</div>
-              <div style="font-size:.72rem;line-height:1.45;">You do not set or fund a bounty when reporting. The official reviewing the report will set the appropriate amount based on the cleanup scope, urgency, weight, and site conditions.</div>
+              <div style="font-size:.8rem;font-weight:800;margin-bottom:2px;">${this.formData.taskType === 'private_property' ? `Private property cash task • ₱${Number(this.formData.rewardPhp || 500).toFixed(2)} gross` : this.formData.taskType === 'partner' ? `Partner task • ${Number(this.formData.cleanPoints || 500).toLocaleString()} Clean Points` : `Public task • automatic cash reward + ${Number(this.formData.trustPoints || 10)} Trust Points`}</div>
+              <div style="font-size:.72rem;line-height:1.45;">${this.formData.taskType === 'private_property' ? 'The cleaner receives 95% and StreetClean receives a 5% platform fee.' : this.formData.taskType === 'partner' ? 'Points accumulate on the cleaner account and can be exchanged for partner coupons and discounts.' : `Public tasks require a reputation score of 60+ to claim. A successful cleanup adds +${Number(this.formData.trustPoints || 10)} Trust Points to the cleaner's lifetime total.`}</div>
             </div>
           </div>
         </div>
@@ -272,6 +305,20 @@ window.ReportView = {
     if (step === 2) {
       const addr = document.getElementById('report-address')?.value;
       if (addr) this.formData.address = addr;
+      if (this.formData.taskType === 'private_property') {
+        this.formData.propertyOwner = document.getElementById('property-owner')?.value?.trim() || window.appState.getUser()?.name || '';
+        this.formData.rewardPhp = Number(document.getElementById('private-reward')?.value || this.formData.rewardPhp || 500);
+        if (!Number.isFinite(this.formData.rewardPhp) || this.formData.rewardPhp < 50) { window.showToast('Private property rewards must be at least ₱50.', 'error'); return; }
+      }
+      if (this.formData.taskType === 'public') {
+        this.formData.trustPoints = Math.max(1, Math.round(Number(document.getElementById('public-trust-points')?.value || this.formData.trustPoints || 10)));
+      }
+      if (this.formData.taskType === 'partner') {
+        this.formData.partnerName = document.getElementById('partner-name')?.value?.trim() || 'StreetClean Partner';
+        this.formData.cleanPoints = Math.round(Number(document.getElementById('partner-points')?.value || this.formData.cleanPoints || 500));
+        this.formData.partnerRewardDescription = document.getElementById('partner-reward-desc')?.value?.trim() || 'Partner reward points';
+        if (!Number.isFinite(this.formData.cleanPoints) || this.formData.cleanPoints < 10) { window.showToast('Partner tasks need at least 10 Clean Points.', 'error'); return; }
+      }
     }
     if (step === 3) {
       const weight = document.getElementById('report-weight')?.value?.trim();
@@ -305,6 +352,11 @@ window.ReportView = {
         }
       }, 100);
     }
+  },
+
+  setTaskType(type) {
+    this.formData.taskType = type;
+    window.renderRoute();
   },
 
   selectPresetZone(name, lat, lng) {
@@ -400,7 +452,14 @@ window.ReportView = {
         severity: this.formData.severity,
         estimatedWeightKg: this.formData.estimatedWeightKg,
         description: this.formData.description || `Reported ${this.formData.category} during festival festivities.`,
-        imageUrl
+        imageUrl,
+        taskType: this.formData.taskType,
+        propertyOwner: this.formData.propertyOwner,
+        rewardPhp: this.formData.rewardPhp,
+        partnerName: this.formData.partnerName,
+        cleanPoints: this.formData.cleanPoints,
+        trustPoints: this.formData.trustPoints,
+        partnerRewardDescription: this.formData.partnerRewardDescription
       });
 
       window.soundSystem.success();

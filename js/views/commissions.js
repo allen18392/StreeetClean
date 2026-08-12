@@ -36,6 +36,14 @@ window.CommissionsView = {
                 <div style="font-size: 0.68rem; color: #64748b; font-weight: 600;">Available Balance</div>
                 <div class="font-mono" style="font-size: 1.15rem; font-weight: 800; color: #b45309;">₱${user.phpBalance.toFixed(2)}</div>
               </div>
+              <div>
+                <div style="font-size: 0.68rem; color: #64748b; font-weight: 600;">Reputation</div>
+                <div class="font-mono" style="font-size: 1.15rem; font-weight: 800; color: #7e22ce;">${Number(user.reputationScore || 50)}/100</div>
+              </div>
+              <div>
+                <div style="font-size: 0.68rem; color: #64748b; font-weight: 600;">Clean Points</div>
+                <div class="font-mono" style="font-size: 1.15rem; font-weight: 800; color: #047857;">${Number(user.cleanPoints || 0).toLocaleString()}</div>
+              </div>
             </div>
           </div>
 
@@ -115,6 +123,7 @@ window.CommissionsView = {
               ? '<span class="task-card-pending-badge"><span class="badge-dot"></span> Pending Bounty</span>'
               : `<span class="status-badge status-${c.status}"><span class="badge-dot"></span> ${c.status.replace('_', ' ')}</span>`}
             <span class="severity-pill ${c.severity}">${c.severity}</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;font-size:.61rem;font-weight:900;">${window.appState.getTaskTypeLabel(c)}</span>
           </div>
           <div class="task-card-bounty ${window.appState.getRewardAmount(c) > 0 ? '' : 'is-tba'}">
             ${window.appState.getRewardDisplay(c)}
@@ -143,8 +152,12 @@ window.CommissionsView = {
         </div>
 
         <div class="task-card-meta">
-          <div>
-            <i class="fa-solid fa-weight-hanging" style="color: var(--emerald-600);"></i> ~${Number(c.estimatedWeightKg || 0).toFixed(2)} kg
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <div><i class="fa-solid fa-weight-hanging" style="color: var(--emerald-600);"></i> ~${Number(c.estimatedWeightKg || 0).toFixed(2)} kg</div>
+            <div style="font-size:.67rem;color:#64748b;"><i class="fa-solid fa-clock"></i> Uploaded ${window.appState.formatTimestamp(c.beforeUploadedAt || c.createdAt, 'Upload time unavailable')}</div>
+            ${c.taskType === 'private_property' ? `<div style="font-size:.67rem;color:#92400e;"><i class="fa-solid fa-coins"></i> 95% cleaner payout • 5% platform fee</div>` : ''}
+            ${c.taskType === 'partner' ? `<div style="font-size:.67rem;color:#7e22ce;"><i class="fa-solid fa-star"></i> ${Number(c.cleanPoints || 0).toLocaleString()} Clean Points • ${c.partnerName || c.sponsor || 'Partner'}</div>` : ''}
+            ${c.taskType === 'public' ? `<div style="font-size:.67rem;color:#166534;"><i class="fa-solid fa-shield-halved"></i> Reputation ${Number(c.requiredReputation || 60)}+ required</div>` : ''}
           </div>
         </div>
       </div>

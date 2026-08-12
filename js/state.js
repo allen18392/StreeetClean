@@ -30,6 +30,16 @@ function humanizeFirebaseError(err) {
 const DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=250&q=80';
 
+const TRUST_LEVELS = [
+  { threshold: 0, name: 'Trusted Newcomer', icon: 'fa-seedling' },
+  { threshold: 25, name: 'Reliable Helper', icon: 'fa-hand-holding-heart' },
+  { threshold: 75, name: 'Trusted Cleaner', icon: 'fa-badge-check' },
+  { threshold: 150, name: 'Community Guardian', icon: 'fa-shield-heart' },
+  { threshold: 300, name: 'Cleanup Champion', icon: 'fa-medal' },
+  { threshold: 500, name: 'Trusted Elite', icon: 'fa-crown' },
+  { threshold: 1000, name: 'Trust Legend', icon: 'fa-star' }
+];
+
 const WASTE_BADGES = [
   { threshold: 5, name: 'Leaf Picker', desc: 'Collected 5+ kg of waste', icon: 'fa-leaf', color: 'green' },
   { threshold: 10, name: 'Waste Scout', desc: 'Collected 10+ kg of waste', icon: 'fa-binoculars', color: 'green' },
@@ -42,6 +52,30 @@ const WASTE_BADGES = [
 function getWasteBadges(kg) {
   const total = Number(kg || 0);
   return WASTE_BADGES.filter(b => total >= b.threshold);
+}
+
+// Firebase Timestamp, Date, ISO string, and Firestore server timestamp-safe formatter.
+function formatStreetCleanTimestamp(value, fallback = 'Not recorded') {
+  if (!value) return fallback;
+  let date = null;
+  if (value instanceof Date) date = value;
+  else if (typeof value?.toDate === 'function') date = value.toDate();
+  else if (typeof value === 'number') date = new Date(value);
+  else if (typeof value === 'string') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) date = parsed;
+  }
+  if (!date || Number.isNaN(date.getTime())) return fallback;
+  return new Intl.DateTimeFormat('en-PH', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    hour12: true,
+    timeZone: 'Asia/Manila'
+  }).format(date);
+}
+
+function timestampForLocalDisplay() {
+  return new Date().toISOString();
 }
 
 function makeUserProfile(uid, data = {}) {
@@ -77,7 +111,23 @@ function makeUserProfile(uid, data = {}) {
     },
     badges: getWasteBadges(Number(data.stats?.kgRecycled || 0)).length ? getWasteBadges(Number(data.stats?.kgRecycled || 0)) : (Array.isArray(data.badges) ? data.badges : []),
     gear: Array.isArray(data.gear) ? data.gear : [],
-    redeemedPartnerRewards: Array.isArray(data.redeemedPartnerRewards) ? data.redeemedPartnerRewards : []
+    redeemedPartnerRewards: Array.isArray(data.redeemedPartnerRewards) ? data.redeemedPartnerRewards : [],
+    reputationScore: Number.isFinite(Number(data.reputationScore)) ? Number(data.reputationScore) : 50,
+    reputationLevel: data.reputationLevel || 'New Cleaner',
+    trustPoints: Number(data.trustPoints || 0),
+    trustLevel: data.trustLevel || 'Trusted Newcomer',
+    trustStats: {
+      taskPoints: Number(data.trustStats?.taskPoints || data.trustPoints || 0),
+      completedTasks: Number(data.trustStats?.completedTasks || data.stats?.completedCleans || 0),
+      publicTasks: Number(data.trustStats?.publicTasks || 0),
+      reportPoints: Number(data.trustStats?.reportPoints || 0)
+    },
+    reputationStats: {
+      successfulCleans: Number(data.reputationStats?.successfulCleans || 0),
+      publicCleans: Number(data.reputationStats?.publicCleans || 0),
+      failedAudits: Number(data.reputationStats?.failedAudits || 0),
+      duplicateFlags: Number(data.reputationStats?.duplicateFlags || 0)
+    }
   };
 }
 
@@ -171,6 +221,38 @@ class StateManager {
     if (reportsResult.status === 'fulfilled') {
       this.commissions = reportsResult.value.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
+        .map(comm => {
+          // Backward compatibility for reports created before the new task model.
+          if (!comm.taskType) comm.taskType = comm.rewardType === 'points' ? 'partner' : 'public';
+          if (!comm.taskTypeLabel) comm.taskTypeLabel = this.getTaskTypeLabel(comm);
+          if (comm.taskType === 'public' && !Number(comm.requiredReputation)) comm.requiredReputation = 60;
+          if (comm.rewardType === 'money' && comm.rewardPhp != null) {
+            comm.platformFeeRate = Number(comm.platformFeeRate ?? 0.05);
+            comm.platformFeePhp = Number(comm.platformFeePhp ?? (Number(comm.rewardPhp || 0) * comm.platformFeeRate));
+            comm.cleanerPayoutPhp = Number(comm.cleanerPayoutPhp ?? Math.max(0, Number(comm.rewardPhp || 0) - comm.platformFeePhp));
+          }
+          // Old pending-bounty reports become public community tasks with an automatic reward.
+          if (comm.status === 'pending_bounty') {
+            const autoReward = Math.max(50, Math.round((Number(comm.estimatedWeightKg) || 1) * 20));
+            comm.taskType = 'public';
+            comm.taskTypeLabel = this.getTaskTypeLabel(comm);
+            comm.rewardType = 'money';
+            comm.rewardPhp = autoReward;
+            comm.cleanPoints = 0;
+            comm.platformFeeRate = 0.05;
+            comm.platformFeePhp = Math.round(autoReward * 0.05 * 100) / 100;
+            comm.cleanerPayoutPhp = Math.round(autoReward * 0.95 * 100) / 100;
+            comm.bountyStatus = 'auto_assigned';
+            comm.status = 'open';
+            comm.requiredReputation = 60;
+            firestore.collection('reports').doc(comm.id).update({
+              taskType: 'public', taskTypeLabel: comm.taskTypeLabel, rewardType: 'money', rewardPhp: autoReward,
+              cleanPoints: 0, platformFeeRate: 0.05, platformFeePhp: comm.platformFeePhp,
+              cleanerPayoutPhp: comm.cleanerPayoutPhp, bountyStatus: 'auto_assigned', status: 'open', requiredReputation: 60
+            }).catch(err => console.warn('Could not migrate legacy report', comm.id, err));
+          }
+          return comm;
+        })
         .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     } else {
       console.error('Reports feed failed to load:', reportsResult.reason?.code || reportsResult.reason);
@@ -306,6 +388,10 @@ class StateManager {
     }
   }
 
+  formatTimestamp(value, fallback = 'Not recorded') {
+    return formatStreetCleanTimestamp(value, fallback);
+  }
+
   getRewardType(comm) {
     if (comm?.rewardType === 'points' || comm?.rewardType === 'money') return comm.rewardType;
     if (Number(comm?.rewardPhp || 0) > 0) return 'money';
@@ -323,6 +409,69 @@ class StateManager {
     const amount = this.getRewardAmount(comm);
     if (!type || amount <= 0) return 'TBA';
     return type === 'points' ? `${amount.toLocaleString()} pts` : `₱${amount.toFixed(2)}`;
+  }
+
+  getTaskTypeLabel(comm) {
+    const map = {
+      private_property: 'Private Property',
+      partner: 'Partner Challenge',
+      public: 'Community Cleanup'
+    };
+    return map[comm?.taskType] || 'Community Cleanup';
+  }
+
+  getPlatformFee(comm) {
+    if (this.getRewardType(comm) !== 'money') return 0;
+    return Math.round(Number(comm.rewardPhp || 0) * Number(comm.platformFeeRate ?? 0.05) * 100) / 100;
+  }
+
+  getCleanerPayout(comm) {
+    if (this.getRewardType(comm) !== 'money') return 0;
+    return Math.max(0, Math.round((Number(comm.rewardPhp || 0) - this.getPlatformFee(comm)) * 100) / 100);
+  }
+
+  getTrustLevel(points) {
+    const n = Number(points || 0);
+    return [...TRUST_LEVELS].reverse().find(level => n >= level.threshold)?.name || TRUST_LEVELS[0].name;
+  }
+
+  getTrustLevelMeta(points) {
+    const n = Number(points || 0);
+    return [...TRUST_LEVELS].reverse().find(level => n >= level.threshold) || TRUST_LEVELS[0];
+  }
+
+  getTrustLevelIndex(points) {
+    const n = Number(points || 0);
+    let index = 0;
+    TRUST_LEVELS.forEach((level, i) => { if (n >= level.threshold) index = i; });
+    return index;
+  }
+
+  getNextTrustMilestone(points) {
+    const n = Number(points || 0);
+    return TRUST_LEVELS.find(level => n < level.threshold)?.threshold || TRUST_LEVELS[TRUST_LEVELS.length - 1].threshold;
+  }
+
+  getTrustLevelStart(points) {
+    const index = this.getTrustLevelIndex(points);
+    return TRUST_LEVELS[index]?.threshold || 0;
+  }
+
+  getTrustLevels() {
+    return TRUST_LEVELS;
+  }
+
+  getReputationLevel(score) {
+    const n = Number(score || 0);
+    if (n >= 90) return 'Trusted Cleaner';
+    if (n >= 75) return 'Verified Cleaner';
+    if (n >= 60) return 'Reliable Cleaner';
+    if (n >= 45) return 'New Cleaner';
+    return 'Needs Review';
+  }
+
+  getPublicTaskMinReputation(comm) {
+    return Number(comm?.requiredReputation || 60);
   }
 
   getWasteTypeInfo(comm) {
@@ -413,39 +562,78 @@ class StateManager {
     if (!user) return null;
 
     const newId = `SC-${Date.now()}`;
+    const taskType = ['private_property', 'partner', 'public'].includes(reportData.taskType) ? reportData.taskType : 'public';
+    const requestedReward = Math.max(0, Number(reportData.rewardPhp || 0));
+    const requestedPoints = Math.max(0, Math.round(Number(reportData.cleanPoints || 0)));
+    const requestedTrustPoints = Math.max(1, Math.round(Number(reportData.trustPoints || 10)));
+    const publicAutoReward = Math.max(50, Math.round((Number(reportData.estimatedWeightKg) || 1) * 20));
+
+    let rewardType = 'money';
+    let rewardPhp = publicAutoReward;
+    let cleanPoints = 0;
+    let bountyStatus = 'auto_assigned';
+    let status = 'open';
+
+    if (taskType === 'private_property') {
+      rewardPhp = requestedReward || 500;
+    } else if (taskType === 'partner') {
+      rewardType = 'points';
+      rewardPhp = 0;
+      cleanPoints = requestedPoints || 500;
+    } else {
+      rewardPhp = publicAutoReward;
+    }
 
     const newCommission = {
       id: newId,
-      title: reportData.title || 'Festival Litter Hotspot',
+      title: reportData.title || 'Community Cleanup Task',
+      taskType,
+      taskTypeLabel: this.getTaskTypeLabel({ taskType }),
       sector: reportData.sector || 'Legazpi City Festival Zone',
       address: reportData.address || 'Legazpi City Festival Zone',
       lat: parseFloat(reportData.lat) || 13.1398,
       lng: parseFloat(reportData.lng) || 123.7345,
+      propertyOwner: taskType === 'private_property' ? (reportData.propertyOwner || user.name) : null,
+      partnerName: taskType === 'partner' ? (reportData.partnerName || user.name) : null,
+      partnerRewardDescription: taskType === 'partner' ? (reportData.partnerRewardDescription || 'Partner reward points') : null,
       category: reportData.category || 'Mixed Organic & Litter',
       wasteType: reportData.wasteType || 'recyclable',
       severity: reportData.severity || 'medium',
-      rewardType: null,
-      rewardPhp: null,
-      bountyStatus: 'pending_assignment',
-      bountyAssignedBy: null,
-      bountyAssignedAt: null,
-      cleanPoints: 0,
+      rewardType,
+      rewardPhp,
+      cleanPoints,
+      platformFeeRate: rewardType === 'money' ? 0.05 : 0,
+      platformFeePhp: rewardType === 'money' ? Math.round(rewardPhp * 0.05 * 100) / 100 : 0,
+      cleanerPayoutPhp: rewardType === 'money' ? Math.max(0, Math.round((rewardPhp * 0.95) * 100) / 100) : 0,
+      bountyStatus,
+      bountyAssignedBy: taskType === 'partner' ? reportData.partnerName || user.name : 'StreetClean Auto Reward Engine',
+      bountyAssignedAt: timestampForLocalDisplay(),
+      requiredReputation: taskType === 'public' ? 60 : 0,
+      trustPoints: taskType === 'public' ? requestedTrustPoints : 0,
       estimatedWeightKg: parseFloat(reportData.estimatedWeightKg) || 0,
-      status: 'pending_bounty',
+      status,
       reportedBy: user.name,
       reportedById: user.id,
-      reportedAt: 'Just now',
-      sponsor: 'Community Clean Fund',
+      reportedAt: timestampForLocalDisplay(),
+      sponsor: taskType === 'partner' ? (reportData.partnerName || user.name) : (taskType === 'private_property' ? user.name : 'StreetClean Community'),
       imageBefore: reportData.imageUrl || null,
       imageAfter: null,
+      beforeUploadedAt: timestampForLocalDisplay(),
+      afterUploadedAt: null,
       description: reportData.description || '',
       votes: { approve: 0, reject: 0 },
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: timestampForLocalDisplay()
     };
 
     this.commissions.unshift(newCommission);
 
-    firestore.collection('reports').doc(newId).set(newCommission).then(() => {
+    firestore.collection('reports').doc(newId).set({
+      ...newCommission,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      reportedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      beforeUploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      bountyAssignedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
       this.emit('stateChanged');
     }).catch(err => {
       console.error('Could not save report to Firestore:', err.code || err.message || err);
@@ -480,7 +668,7 @@ class StateManager {
     comm.bountyStatus = 'assigned';
     comm.bountyAssignedBy = user.name;
     comm.bountyAssignedById = user.id;
-    comm.bountyAssignedAt = 'Just now';
+    comm.bountyAssignedAt = timestampForLocalDisplay();
     comm.status = 'open';
 
     firestore.collection('reports').doc(comm.id).update({
@@ -507,15 +695,27 @@ class StateManager {
     const user = this.getUser();
 
     if (!comm || comm.status !== 'open' || !user || this.getRewardAmount(comm) <= 0) return false;
+    if (comm.taskType === 'public' && Number(user.reputationScore || 50) < this.getPublicTaskMinReputation(comm)) {
+      window.showToast?.(`Public tasks require a reputation score of ${this.getPublicTaskMinReputation(comm)}+. Your score is ${Number(user.reputationScore || 50)}.`, 'error');
+      return false;
+    }
+    if (comm.taskType === 'private_property' && comm.reportedById === user.id) {
+      window.showToast?.('You cannot claim your own property task.', 'error');
+      return false;
+    }
 
     comm.status = 'in_progress';
     comm.assignedTo = user.name;
     comm.assignedToId = user.id;
+    comm.claimedAt = timestampForLocalDisplay();
+    comm.claimedReputation = Number(user.reputationScore || 50);
 
     firestore.collection('reports').doc(comm.id).update({
       status: comm.status,
       assignedTo: comm.assignedTo,
-      assignedToId: comm.assignedToId
+      assignedToId: comm.assignedToId,
+      claimedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      claimedReputation: comm.claimedReputation
     }).catch(err => {
       console.error('Could not update report:', err.code || err.message || err);
       window.showToast?.('Could not save this task to Firebase.', 'error');
@@ -528,24 +728,51 @@ class StateManager {
 
   submitProof(id, proof) {
     const comm = this.getCommissionById(id);
-    if (!comm) return false;
+    if (!comm || !['in_progress', 'open'].includes(comm.status)) return false;
+
+    const user = this.getUser();
+    if (!user || (comm.assignedToId && comm.assignedToId !== user.id)) return false;
 
     comm.status = 'in_review';
+    comm.assignedTo = comm.assignedTo || user.name;
+    comm.assignedToId = comm.assignedToId || user.id;
     comm.imageAfter = proof.imageAfter || null;
+    const submittedAt = timestampForLocalDisplay();
+    comm.afterUploadedAt = submittedAt;
+    const weightRecordedKg = parseFloat(proof.weightKg) || comm.estimatedWeightKg || 0;
+    const beforeLat = Number(comm.lat || 0);
+    const beforeLng = Number(comm.lng || 0);
+    const afterLat = Number(proof.afterLat ?? beforeLat);
+    const afterLng = Number(proof.afterLng ?? beforeLng);
+    const gpsDistanceMeters = this.calculateDistanceMeters(beforeLat, beforeLng, afterLat, afterLng);
+    const gpsMatch = gpsDistanceMeters <= 100;
+    const reputation = Number(user.reputationScore || 50);
+    const duplicateFlag = !!proof.duplicateFlag;
+    const automatedPass = !!comm.imageAfter && gpsMatch && !duplicateFlag && weightRecordedKg > 0 && (comm.taskType !== 'public' || reputation >= this.getPublicTaskMinReputation(comm));
+
     comm.proofData = {
-      weightRecordedKg: parseFloat(proof.weightKg) || comm.estimatedWeightKg,
+      weightRecordedKg,
       facilityManifestId: proof.manifestId || '',
-      exifGpsMatch: 99.8,
-      aiCleanlinessScore: 99.2,
-      submittedAt: 'Just now',
-      cleanerNotes: proof.notes || ''
+      exifGpsMatch: gpsMatch ? Math.max(95, Number(proof.exifGpsMatch || 99.8)) : 35,
+      aiCleanlinessScore: Number(proof.aiCleanlinessScore || (automatedPass ? 95 : 55)),
+      submittedAt,
+      cleanerNotes: proof.notes || '',
+      afterLat,
+      afterLng,
+      gpsDistanceMeters,
+      gpsMatch,
+      duplicateFlag,
+      verificationMethod: automatedPass ? 'automatic' : 'manual-audit'
     };
-    comm.votes = { approve: 1, reject: 0 };
+    comm.votes = { approve: automatedPass ? 3 : 1, reject: 0 };
 
     firestore.collection('reports').doc(comm.id).update({
       status: comm.status,
+      assignedTo: comm.assignedTo,
+      assignedToId: comm.assignedToId,
       imageAfter: comm.imageAfter,
-      proofData: comm.proofData,
+      proofData: { ...comm.proofData, submittedAt: firebase.firestore.FieldValue.serverTimestamp() },
+      afterUploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
       votes: comm.votes
     }).catch(err => {
       console.error('Could not save proof:', err.code || err.message || err);
@@ -554,29 +781,52 @@ class StateManager {
 
     this.emit('proofSubmitted', comm);
     this.emit('stateChanged');
+
+    if (automatedPass) {
+      return this.verifyProof(id, true, 'Automatically verified using timestamps, GPS, task evidence and cleaner reputation.');
+    }
     return true;
+  }
+
+  calculateDistanceMeters(lat1, lng1, lat2, lng2) {
+    const toRad = deg => deg * Math.PI / 180;
+    const a1 = toRad(Number(lat1)), a2 = toRad(Number(lat2));
+    const dLat = toRad(Number(lat2) - Number(lat1));
+    const dLng = toRad(Number(lng2) - Number(lng1));
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(a1) * Math.cos(a2) * Math.sin(dLng / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   verifyProof(id, approved = true, notes = '') {
     const comm = this.getCommissionById(id);
-    if (!comm || comm.status !== 'in_review') return false;
+    if (!comm || !['in_review', 'auto_verified'].includes(comm.status)) return false;
 
     if (!approved) {
       comm.status = 'in_progress';
       comm.imageAfter = null;
       comm.rejectNotes = notes || 'Please re-sweep the site.';
+      const cleaner = comm.assignedToId ? this.users[comm.assignedToId] : null;
+      if (cleaner) {
+        cleaner.reputationStats.failedAudits += 1;
+        cleaner.reputationScore = Math.max(0, Number(cleaner.reputationScore || 50) - 8);
+        cleaner.reputationLevel = this.getReputationLevel(cleaner.reputationScore);
+      }
       firestore.collection('reports').doc(comm.id).update({
         status: comm.status,
         imageAfter: null,
-        rejectNotes: comm.rejectNotes
+        rejectNotes: comm.rejectNotes,
+        verificationMethod: 'manual-audit'
       }).catch(err => console.error('Could not save rejection:', err.code || err.message || err));
+      if (cleaner) this.persistUser(cleaner);
       this.emit('proofRejected', comm);
       this.emit('stateChanged');
       return true;
     }
 
     comm.status = 'completed';
-    comm.votes = { ...(comm.votes || {}), approve: 3 };
+    comm.verificationMethod = comm.proofData?.verificationMethod || 'automatic';
+    comm.verifiedAt = timestampForLocalDisplay();
+    comm.votes = { ...(comm.votes || {}), approve: Math.max(3, Number(comm.votes?.approve || 0)) };
 
     const cleanerId = comm.assignedToId;
     const cleaner = cleanerId ? this.users[cleanerId] : null;
@@ -586,33 +836,61 @@ class StateManager {
       return false;
     }
 
-    if (this.getRewardType(comm) === 'money') {
-      cleaner.phpBalance += Number(comm.rewardPhp || 0);
+    const moneyReward = this.getRewardType(comm) === 'money';
+    const cleanerPayout = moneyReward ? this.getCleanerPayout(comm) : 0;
+    if (moneyReward) {
+      cleaner.phpBalance += cleanerPayout;
+      comm.platformFeePhp = this.getPlatformFee(comm);
+      comm.cleanerPayoutPhp = cleanerPayout;
     } else if (this.getRewardType(comm) === 'points') {
       cleaner.cleanPoints += Number(comm.cleanPoints || 0);
     }
+
+    const kg = Number(comm.proofData?.weightRecordedKg || comm.estimatedWeightKg || 0);
     cleaner.stats.completedCleans += 1;
-    cleaner.stats.kgRecycled += Number(comm.proofData?.weightRecordedKg || comm.estimatedWeightKg || 0);
+    cleaner.stats.kgRecycled += kg;
+    cleaner.reputationStats.successfulCleans += 1;
+    if (comm.taskType === 'public') cleaner.reputationStats.publicCleans += 1;
+    const repGain = comm.taskType === 'public' ? 7 : 5;
+    const trustGain = comm.taskType === 'public' ? Math.max(1, Number(comm.trustPoints || 10)) : 0;
+    cleaner.trustPoints = Math.max(0, Number(cleaner.trustPoints || 0) + trustGain);
+    cleaner.trustStats = {
+      ...(cleaner.trustStats || {}),
+      taskPoints: Math.max(0, Number(cleaner.trustPoints || 0)),
+      completedTasks: Number(cleaner.trustStats?.completedTasks || 0) + 1,
+      publicTasks: Number(cleaner.trustStats?.publicTasks || 0) + (comm.taskType === 'public' ? 1 : 0),
+      reportPoints: Number(cleaner.trustStats?.reportPoints || 0)
+    };
+    cleaner.trustLevel = this.getTrustLevel(cleaner.trustPoints);
+    cleaner.reputationScore = Math.min(100, Math.max(0, Number(cleaner.reputationScore || 50) + repGain));
+    cleaner.reputationLevel = this.getReputationLevel(cleaner.reputationScore);
     const earnedWasteBadges = getWasteBadges(cleaner.stats.kgRecycled);
     cleaner.badges = earnedWasteBadges.length ? earnedWasteBadges : (cleaner.badges || []);
 
     const tx = {
       id: `TX-PH-${Date.now()}`,
-      type: 'bounty_payout',
-      title: `Bounty Payout: ${comm.title}`,
+      type: moneyReward ? 'bounty_payout' : 'partner_task_reward',
+      title: `${this.getTaskTypeLabel(comm)}: ${comm.title}`,
       reference: comm.id,
-      amountPhp: Number(comm.rewardPhp || 0),
+      amountPhp: cleanerPayout,
+      grossAmountPhp: moneyReward ? Number(comm.rewardPhp || 0) : 0,
+      platformFeePhp: moneyReward ? Number(comm.platformFeePhp || 0) : 0,
       points: Number(comm.cleanPoints || 0),
+      trustPoints: trustGain,
       rewardType: this.getRewardType(comm),
       status: 'completed',
       date: 'Today',
       time: 'Just now',
-      channel: 'Firebase Civic Wallet'
+      channel: moneyReward ? 'StreetClean Auto Payout' : (comm.partnerName || 'Partner Rewards')
     };
 
     firestore.collection('reports').doc(comm.id).update({
       status: comm.status,
-      votes: comm.votes
+      votes: comm.votes,
+      verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      verificationMethod: comm.verificationMethod,
+      platformFeePhp: comm.platformFeePhp || 0,
+      cleanerPayoutPhp: comm.cleanerPayoutPhp || 0
     }).then(async () => {
       await this.persistUser(cleaner);
       await this.addTransaction(cleaner.id, tx);
@@ -623,6 +901,10 @@ class StateManager {
 
     if (cleaner.id === this.currentUserId) {
       this.transactions.unshift({ ...tx, userId: cleaner.id });
+    }
+
+    if (trustGain > 0 && cleaner.id === this.currentUserId) {
+      window.showToast?.(`+${trustGain} Trust Points earned! You are now ${cleaner.trustLevel}.`, 'success');
     }
 
     this.emit('proofApproved', comm);

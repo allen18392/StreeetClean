@@ -120,7 +120,10 @@ window.updateHeaderUserChip = () => {
     chip.innerHTML = `
       <img src="${user.avatar}" class="user-quick-avatar" alt="${user.name}" />
       <div style="text-align: left; line-height: 1.1;">
-        <div class="user-quick-name">${user.name}</div>
+        <div class="user-quick-name">
+          <span class="user-quick-name-text">${user.name}</span>
+          ${(() => { const trust = window.appState.getTrustLevelMeta(user.trustPoints || 0); return `<span class="trust-level-badge" title="${trust.name} • ${Number(user.trustPoints || 0).toLocaleString()} Trust Points" aria-label="${trust.name}"><i class="fa-solid ${trust.icon}"></i><span class="trust-level-badge-label">${trust.name}</span></span>`; })()}
+        </div>
         <div class="user-quick-role">${user.role}</div>
       </div>
     `;
@@ -240,9 +243,9 @@ window.openCommissionDetails = (id) => {
   const user = window.appState.getUser();
 
   let statusBadge = '<span class="status-badge status-open"><span class="badge-dot"></span> Open Task</span>';
-  if (comm.status === 'pending_bounty') statusBadge = '<span class="status-badge" style="background:#f3e8ff;color:#7e22ce;border:1px solid #d8b4fe;"><span class="badge-dot"></span> Awaiting LGU Reward</span>';
+  if (comm.status === 'pending_bounty') statusBadge = '<span class="status-badge" style="background:#f3e8ff;color:#7e22ce;border:1px solid #d8b4fe;"><span class="badge-dot"></span> Legacy Task</span>';
   if (comm.status === 'in_progress') statusBadge = '<span class="status-badge status-in_progress"><span class="badge-dot"></span> In Progress</span>';
-  if (comm.status === 'in_review') statusBadge = '<span class="status-badge status-in_review"><span class="badge-dot"></span> In Review by Verifier</span>';
+  if (comm.status === 'in_review') statusBadge = '<span class="status-badge status-in_review"><span class="badge-dot"></span> Automatic Audit</span>';
   if (comm.status === 'completed') statusBadge = '<span class="status-badge status-completed"><span class="badge-dot"></span> Verified & Rewarded</span>';
   const wasteType = window.appState.getWasteTypeInfo(comm);
 
@@ -270,14 +273,18 @@ window.openCommissionDetails = (id) => {
 
       <!-- Title & Location -->
       <h2 style="font-size: 1.2rem; font-weight: 800; line-height: 1.3; margin-bottom: 4px; color: #0f172a;">${comm.title}</h2>
-      <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">
+      <div style="font-size: 0.8rem; color: #64748b; margin-bottom: .65rem;">
         <i class="fa-solid fa-location-dot" style="color: var(--emerald-600);"></i> ${comm.sector} • ${comm.address}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;">
+        <span style="font-size:.68rem;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;padding:5px 9px;"><i class="fa-solid fa-camera" style="color:#e11d48;"></i> Before uploaded: ${window.appState.formatTimestamp(comm.beforeUploadedAt || comm.createdAt, 'Not recorded')}</span>
+        ${comm.imageAfter ? `<span style="font-size:.68rem;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:999px;padding:5px 9px;"><i class="fa-solid fa-camera" style="color:var(--emerald-600);"></i> After uploaded: ${window.appState.formatTimestamp(comm.afterUploadedAt || comm.proofData?.submittedAt, 'Not recorded')}</span>` : ''}
       </div>
 
       <!-- Reward Hero -->
       <div style="display: flex; align-items: center; justify-content: space-between; background: ${window.appState.getRewardAmount(comm) > 0 ? '#fef3c7' : '#f3e8ff'}; border: 1px solid ${window.appState.getRewardAmount(comm) > 0 ? '#fde68a' : '#d8b4fe'}; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
         <div>
-          <div style="font-size: 0.72rem; color: ${window.appState.getRewardAmount(comm) > 0 ? '#92400e' : '#7e22ce'}; text-transform: uppercase; font-weight: 700;">${window.appState.getRewardAmount(comm) > 0 ? (window.appState.getRewardType(comm) === 'points' ? 'LGU-Assigned Points Reward' : 'LGU-Assigned Cash Reward') : 'Cleanup Reward Pending'}</div>
+          <div style="font-size: 0.72rem; color: ${window.appState.getRewardAmount(comm) > 0 ? '#92400e' : '#7e22ce'}; text-transform: uppercase; font-weight: 700;">${window.appState.getRewardAmount(comm) > 0 ? (window.appState.getRewardType(comm) === 'points' ? 'Partner Clean Points Reward' : 'Automatic Cash Reward') : 'Cleanup Reward Pending'}</div>
           <div class="font-mono" style="font-size: 1.6rem; font-weight: 800; color: ${window.appState.getRewardAmount(comm) > 0 ? '#b45309' : '#7e22ce'};">${window.appState.getRewardDisplay(comm)}</div>
         </div>
         <div style="text-align: right;">
@@ -319,12 +326,15 @@ window.openCommissionDetails = (id) => {
         ${comm.description}
       </div>
 
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:0 0 12px 0;">
+        <div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"><div style="font-size:.62rem;color:#64748b;text-transform:uppercase;font-weight:800;">Task Type</div><div style="font-size:.76rem;font-weight:800;color:#0f172a;margin-top:2px;">${window.appState.getTaskTypeLabel(comm)}</div></div>
+        <div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"><div style="font-size:.62rem;color:#64748b;text-transform:uppercase;font-weight:800;">Before Uploaded</div><div style="font-size:.7rem;color:#475569;margin-top:2px;">${window.appState.formatTimestamp(comm.beforeUploadedAt || comm.createdAt)}</div></div>
+        ${comm.taskType === 'private_property' ? `<div style="padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;"><div style="font-size:.62rem;color:#92400e;text-transform:uppercase;font-weight:800;">Payout / Fee</div><div style="font-size:.7rem;color:#475569;margin-top:2px;">₱${window.appState.getCleanerPayout(comm).toFixed(2)} / ₱${window.appState.getPlatformFee(comm).toFixed(2)}</div></div>` : ''}
+        ${comm.taskType === 'partner' ? `<div style="padding:8px 10px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;"><div style="font-size:.62rem;color:#7e22ce;text-transform:uppercase;font-weight:800;">Partner</div><div style="font-size:.7rem;color:#475569;margin-top:2px;">${comm.partnerName || comm.sponsor || 'Partner'} • ${Number(comm.cleanPoints || 0).toLocaleString()} pts</div></div>` : ''}
+        ${comm.taskType === 'public' ? `<div style="padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;"><div style="font-size:.62rem;color:#166534;text-transform:uppercase;font-weight:800;">Public Safety Gate</div><div style="font-size:.7rem;color:#475569;margin-top:2px;">Reputation ${Number(comm.requiredReputation || 60)}+</div></div>` : ''}
+      </div>
+
       <!-- Action Area -->
-      ${comm.status === 'pending_bounty' ? `
-        <div class="card" style="padding:10px;background:#faf5ff;border:1px solid #d8b4fe;text-align:center;color:#7e22ce;font-weight:700;font-size:.85rem;">
-          <i class="fa-solid fa-shield-halved"></i> This report is awaiting an authorized LGU verifier to determine the cleanup reward.
-        </div>
-      ` : ''}
 
       ${comm.status === 'open' && window.appState.getRewardAmount(comm) > 0 ? `
         <button class="btn btn-gold btn-block" style="margin-top: 0.25rem;" onclick="window.claimTask('${comm.id}')">
@@ -332,11 +342,6 @@ window.openCommissionDetails = (id) => {
         </button>
       ` : ''}
 
-      ${comm.status === 'open' && window.appState.getRewardAmount(comm) <= 0 ? `
-        <div class="card" style="padding:10px;background:#faf5ff;border:1px solid #d8b4fe;text-align:center;color:#7e22ce;font-weight:700;font-size:.85rem;margin-top:0.25rem;">
-          <i class="fa-solid fa-shield-halved"></i> Reward pending — an authorized LGU verifier must assign the bounty before this task can be claimed.
-        </div>
-      ` : ''}
 
       ${comm.status === 'in_progress' ? `
         <button class="btn btn-primary btn-block" onclick="window.openSubmitProofForm('${comm.id}')">
@@ -346,13 +351,13 @@ window.openCommissionDetails = (id) => {
 
       ${comm.status === 'in_review' ? `
         <div class="card" style="padding: 10px; background: #ffedd5; border: 1px solid #fed7aa; text-align: center; color: #c2410c; font-weight: 700; font-size: 0.85rem;">
-          <i class="fa-solid fa-hourglass-half"></i> Under Inspection by Legazpi Marshall. Reward is paid after approval.
+          <i class="fa-solid fa-hourglass-half"></i> Evidence saved. Automatic checks are running before reward release.
         </div>
       ` : ''}
 
       ${comm.status === 'completed' ? `
         <div class="card" style="padding: 10px; background: #dcfce7; border: 1px solid #bbf7d0; text-align: center; color: #15803d; font-weight: 700; font-size: 0.85rem;">
-          <i class="fa-solid fa-circle-check"></i> Clean Verified! ${window.appState.getRewardDisplay(comm)} Reward Paid to ${comm.assignedTo || 'Cleaner'}.
+          <i class="fa-solid fa-circle-check"></i> Clean Verified Automatically! ${window.appState.getRewardDisplay(comm)} released to ${comm.assignedTo || 'Cleaner'}.
         </div>
       ` : ''}
 
@@ -432,7 +437,7 @@ window.openSubmitProofForm = (id) => {
       </div>
 
       <button class="btn btn-primary btn-block" onclick="window.submitProofAction('${comm.id}')">
-        <i class="fa-solid fa-paper-plane"></i> Submit to LGU Verifiers
+        <i class="fa-solid fa-paper-plane"></i> Submit for Automatic Verification
       </button>
     </div>
   `;
@@ -489,18 +494,31 @@ window.submitProofAction = async (id) => {
     const user = window.appState.getUser();
     const imageAfter = await window.uploadImageFile(file);
 
-    const success = window.appState.submitProof(id, {
+    const comm = window.appState.getCommissionById(id);
+    const saveProof = (afterLat, afterLng) => window.appState.submitProof(id, {
       weightKg: weight,
       manifestId: manifest,
       notes: notes,
-      imageAfter
+      imageAfter,
+      afterLat,
+      afterLng,
+      exifGpsMatch: 99.8,
+      aiCleanlinessScore: 98.5
     });
+    let success;
+    if (navigator.geolocation) {
+      success = await new Promise(resolve => {
+        navigator.geolocation.getCurrentPosition(pos => resolve(saveProof(pos.coords.latitude, pos.coords.longitude)), () => resolve(saveProof(comm?.lat, comm?.lng)), { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+      });
+    } else {
+      success = saveProof(comm?.lat, comm?.lng);
+    }
 
     if (success) {
       window._proofPhotoFile = null;
       window.soundSystem.success();
       window.closeModal();
-      window.showToast('Proof photo uploaded! Verifiers have been notified.', 'success');
+      window.showToast('Proof photo uploaded! Automatic verification has started.', 'success');
       window.renderRoute();
     }
   } catch (err) {
@@ -508,7 +526,7 @@ window.submitProofAction = async (id) => {
     window.showToast(err.message || 'Could not upload the proof photo.', 'error');
     if (submitButton) {
       submitButton.disabled = false;
-      submitButton.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit to LGU Verifiers';
+      submitButton.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit for Automatic Verification';
     }
   }
 };

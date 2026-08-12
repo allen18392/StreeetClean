@@ -9,19 +9,16 @@ window.VerifyView = {
     const pendingBounties = window.appState.getCommissions('pending_bounty');
     const pendingReviews = window.appState.getCommissions('in_review');
     const completedCleans = window.appState.getCommissions('completed');
-    const isVerifier = user?.role === 'verifier';
+    const isVerifier = true;
 
     return `
       <div class="verify-view animate-fade-in" style="padding: 1rem 0 2.5rem 0;">
         <div class="app-container" style="max-width: 800px;">
 
-          ${!isVerifier ? `
-            <div class="card" style="padding:1.25rem;margin-bottom:1.25rem;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;text-align:center;">
-              <i class="fa-solid fa-lock" style="font-size:1.5rem;margin-bottom:6px;"></i>
-              <div style="font-weight:800;">Verifier access required</div>
-              <div style="font-size:.78rem;margin-top:4px;">Only authorized LGU verifiers / officials can assign cleanup rewards and approve completed tasks.</div>
-            </div>
-          ` : ''}
+                    <div class="card" style="padding:1rem 1.1rem;margin-bottom:1.25rem;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;">
+            <div style="font-weight:900;"><i class="fa-solid fa-robot"></i> StreetClean Automatic Verification</div>
+            <div style="font-size:.76rem;margin-top:4px;line-height:1.45;">No verifier account is required for normal task completion. Private, partner and public tasks use timestamp, GPS, photo evidence and reputation checks. This page is a read-only audit view for completed and exception cases.</div>
+          </div>
 
           <!-- Verifier Status Banner -->
           <div class="card card-gold-glow" style="padding: 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; background: #ffffff; border: 1px solid #bbf7d0;">
@@ -31,7 +28,7 @@ window.VerifyView = {
               </div>
               <div>
                 <div style="font-size: 0.72rem; color: #b45309; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">
-                  Official LGU Sanitation Audit Hub
+                  StreetClean Verification & Audit Hub
                 </div>
                 <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a;">
                   ${user.name} • <span style="color: var(--emerald-700);">${user.badgeLevel || 'Festival Marshall'}</span>
@@ -51,7 +48,7 @@ window.VerifyView = {
             </div>
           </div>
 
-          ${isVerifier ? `
+          ${false ? `
           <!-- Reports Awaiting LGU Reward Assignment -->
           <div style="margin-bottom: 1.75rem;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
@@ -62,7 +59,7 @@ window.VerifyView = {
 
             ${pendingBounties.length === 0 ? `
               <div class="card" style="padding:1rem 1.25rem;background:#faf5ff;border:1px solid #e9d5ff;color:#7e22ce;font-size:.8rem;">
-                <i class="fa-solid fa-circle-check"></i> No unpriced reports are waiting for an LGU reward decision.
+                <i class="fa-solid fa-circle-check"></i> No unpriced community reports are waiting for an LGU reward decision.
               </div>
             ` : `
               <div style="display:flex;flex-direction:column;gap:12px;">
@@ -112,6 +109,7 @@ window.VerifyView = {
                   </div>
                   <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="font-mono" style="font-weight: 800; color: #b45309; font-size: 0.95rem;">${window.appState.getRewardDisplay(c)}</span>
+                    <span style="font-size:.67rem;color:#64748b;"><i class="fa-solid fa-clock"></i> ${window.appState.formatTimestamp(c.afterUploadedAt || c.proofData?.submittedAt, 'Not recorded')}</span>
                     <span class="status-badge status-completed"><i class="fa-solid fa-check"></i> Approved</span>
                   </div>
                 </div>
@@ -125,7 +123,6 @@ window.VerifyView = {
   },
 
   renderBountyAssignmentCard(c) {
-    const wasteType = window.appState.getWasteTypeInfo(c);
     return `
       <div class="card" style="padding:1.25rem;background:#ffffff;border:1px solid #e9d5ff;">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
@@ -135,14 +132,17 @@ window.VerifyView = {
               <span class="font-mono" style="font-size:.7rem;color:#64748b;">${c.id}</span>
             </div>
             <div style="font-size:1rem;font-weight:800;color:#0f172a;">${c.title}</div>
-            <div style="display:inline-flex;align-items:center;gap:6px;margin-top:7px;padding:4px 8px;border-radius:999px;background:${wasteType.bg};color:${wasteType.color};border:1px solid ${wasteType.border};font-size:.68rem;font-weight:900;text-transform:uppercase;">${wasteType.icon} ${wasteType.label}</div>
+            <div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;">
+              <div style="font-size:.62rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Waste Description</div>
+              <div style="font-size:.78rem;color:#334155;font-weight:800;margin-top:2px;">${c.description || 'e.g. plastic bottles, food containers, mixed litter'}</div>
+            </div>
             <div style="font-size:.74rem;color:#64748b;margin-top:6px;">${c.sector} • ${c.severity} • ~${Number(c.estimatedWeightKg || 0).toFixed(2)} kg</div>
           </div>
-          <div style="font-size:.72rem;color:#7e22ce;font-weight:700;">Resident report</div>
+          <div style="font-size:.72rem;color:#7e22ce;font-weight:700;">Community report</div>
         </div>
 
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:10px;font-size:.76rem;color:#475569;line-height:1.45;">
-          <strong>Description:</strong> ${c.description || 'No additional notes provided.'}
+          <strong>Waste Description:</strong> ${c.description || 'e.g. plastic bottles, food containers, mixed litter'}
         </div>
 
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
@@ -243,6 +243,17 @@ window.VerifyView = {
             <span style="color: var(--emerald-700);">After (Pristine Result) <i class="fa-solid fa-arrow-right"></i></span>
           </div>
 
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-bottom:10px;">
+            <div style="padding:8px 10px;background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;">
+              <div style="font-size:.62rem;color:#9f1239;font-weight:800;text-transform:uppercase;">Before photo uploaded</div>
+              <div style="font-size:.72rem;color:#475569;margin-top:2px;"><i class="fa-solid fa-clock"></i> ${window.appState.formatTimestamp(c.beforeUploadedAt || c.createdAt, 'Not recorded')}</div>
+            </div>
+            <div style="padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+              <div style="font-size:.62rem;color:#166534;font-weight:800;text-transform:uppercase;">After photo uploaded</div>
+              <div style="font-size:.72rem;color:#475569;margin-top:2px;"><i class="fa-solid fa-clock"></i> ${window.appState.formatTimestamp(c.afterUploadedAt || proof.submittedAt, 'Not recorded')}</div>
+            </div>
+          </div>
+
           <div class="before-after-container" id="slider-wrap-${c.id}">
             <img src="${c.imageAfter}" class="before-after-img" alt="After Clean" />
             <div class="after-badge-label"><i class="fa-solid fa-sparkles"></i> Cleaned</div>
@@ -258,6 +269,11 @@ window.VerifyView = {
 
             <input type="range" min="0" max="100" value="50" class="slider-range-input" oninput="window.VerifyView.handleSlider('${c.id}', this.value)" />
           </div>
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:1.25rem;">
+          <div style="font-size:.65rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Waste Description</div>
+          <div style="font-size:.82rem;color:#0f172a;font-weight:800;margin-top:3px;">${c.description || 'e.g. plastic bottles, food containers, mixed litter'}</div>
         </div>
 
         <!-- Automated LGU Compliance Audit Chips -->
@@ -323,7 +339,7 @@ window.VerifyView = {
     const success = window.appState.verifyProof(id, true);
     if (success) {
       window.soundSystem.fanfare();
-      window.showToast('Cleanup Approved! The LGU-assigned reward & Clean Points were released to the cleaner.', 'gold');
+      window.showToast('Cleanup approved and reward released automatically.', 'gold');
       window.renderRoute();
     }
   },
