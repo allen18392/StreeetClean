@@ -244,6 +244,7 @@ window.openCommissionDetails = (id) => {
   if (comm.status === 'in_progress') statusBadge = '<span class="status-badge status-in_progress"><span class="badge-dot"></span> In Progress</span>';
   if (comm.status === 'in_review') statusBadge = '<span class="status-badge status-in_review"><span class="badge-dot"></span> In Review by Verifier</span>';
   if (comm.status === 'completed') statusBadge = '<span class="status-badge status-completed"><span class="badge-dot"></span> Verified & Rewarded</span>';
+  const wasteType = window.appState.getWasteTypeInfo(comm);
 
   const modalHtml = `
     <div class="modal-card">
@@ -256,6 +257,15 @@ window.openCommissionDetails = (id) => {
           <span class="severity-pill ${comm.severity}">${comm.severity}</span>
         </div>
         <span style="font-size: 0.75rem; color: #64748b; font-family: var(--font-mono); font-weight: 700;">${comm.id}</span>
+      </div>
+
+      <!-- Waste Handling -->
+      <div style="display:flex;align-items:center;gap:8px;margin:0 0 10px 0;padding:8px 10px;border-radius:10px;background:${wasteType.bg};border:1px solid ${wasteType.border};color:${wasteType.color};">
+        <span style="font-size:1.05rem;">${wasteType.icon}</span>
+        <div style="min-width:0;">
+          <div style="font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;font-weight:900;opacity:.8;">Waste Handling Category</div>
+          <div style="font-size:.88rem;font-weight:900;">${wasteType.label}</div>
+        </div>
       </div>
 
       <!-- Title & Location -->

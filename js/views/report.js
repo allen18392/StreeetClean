@@ -12,6 +12,7 @@ window.ReportView = {
     lat: 13.1398,
     lng: 123.7345,
     category: 'Plastics & Beverage Cups',
+    wasteType: 'recyclable',
     severity: 'high',
     estimatedWeightKg: '',
     description: '',
@@ -124,6 +125,25 @@ window.ReportView = {
         <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.25rem;">
           Classify the waste so cleaners bring the appropriate gear.
         </p>
+
+        <div class="form-group">
+          <label class="form-label">Waste Type / Handling</label>
+          <p style="font-size:.72rem;color:#64748b;margin:-4px 0 8px 0;">Choose the main handling category so cleaners can prepare before accepting the task.</p>
+          <div class="chip-group">
+            <button class="chip-select-btn ${this.formData.wasteType === 'hazardous' ? 'active' : ''}" type="button" onclick="window.ReportView.setWasteType('hazardous')">
+              ⚠️ Hazardous
+            </button>
+            <button class="chip-select-btn ${this.formData.wasteType === 'non_biodegradable' ? 'active' : ''}" type="button" onclick="window.ReportView.setWasteType('non_biodegradable')">
+              🧴 Non-biodegradable
+            </button>
+            <button class="chip-select-btn ${this.formData.wasteType === 'recyclable' ? 'active' : ''}" type="button" onclick="window.ReportView.setWasteType('recyclable')">
+              ♻️ Recyclable
+            </button>
+            <button class="chip-select-btn ${this.formData.wasteType === 'biodegradable' ? 'active' : ''}" type="button" onclick="window.ReportView.setWasteType('biodegradable')">
+              🍃 Biodegradable
+            </button>
+          </div>
+        </div>
 
         <div class="form-group">
           <label class="form-label">Waste Category</label>
@@ -300,6 +320,11 @@ window.ReportView = {
     window.renderRoute();
   },
 
+  setWasteType(type) {
+    this.formData.wasteType = type;
+    window.renderRoute();
+  },
+
   setSeverity(sev) {
     this.formData.severity = sev;
     window.renderRoute();
@@ -371,6 +396,7 @@ window.ReportView = {
         lat: this.formData.lat,
         lng: this.formData.lng,
         category: this.formData.category,
+        wasteType: this.formData.wasteType,
         severity: this.formData.severity,
         estimatedWeightKg: this.formData.estimatedWeightKg,
         description: this.formData.description || `Reported ${this.formData.category} during festival festivities.`,

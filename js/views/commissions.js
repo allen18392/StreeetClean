@@ -106,6 +106,7 @@ window.CommissionsView = {
   },
 
   renderCard(c) {
+    const wasteType = window.appState.getWasteTypeInfo(c);
     return `
       <div class="card task-card" style="background: #ffffff;" onclick="window.openTaskModal('${c.id}')">
         <div class="task-card-header">
@@ -118,6 +119,13 @@ window.CommissionsView = {
           <div class="task-card-bounty ${window.appState.getRewardAmount(c) > 0 ? '' : 'is-tba'}">
             ${window.appState.getRewardDisplay(c)}
           </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 9px 0;">
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:${wasteType.bg};color:${wasteType.color};border:1px solid ${wasteType.border};font-size:.69rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;">
+            <span style="font-size:.9rem;">${wasteType.icon}</span> ${wasteType.label}
+          </span>
+          <span style="font-size:.68rem;color:#64748b;font-weight:700;">Waste handling</span>
         </div>
 
         <div class="task-card-img-wrap">

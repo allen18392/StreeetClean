@@ -125,6 +125,7 @@ window.VerifyView = {
   },
 
   renderBountyAssignmentCard(c) {
+    const wasteType = window.appState.getWasteTypeInfo(c);
     return `
       <div class="card" style="padding:1.25rem;background:#ffffff;border:1px solid #e9d5ff;">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
@@ -134,7 +135,8 @@ window.VerifyView = {
               <span class="font-mono" style="font-size:.7rem;color:#64748b;">${c.id}</span>
             </div>
             <div style="font-size:1rem;font-weight:800;color:#0f172a;">${c.title}</div>
-            <div style="font-size:.74rem;color:#64748b;margin-top:3px;">${c.sector} • ${c.severity} • ~${Number(c.estimatedWeightKg || 0).toFixed(2)} kg</div>
+            <div style="display:inline-flex;align-items:center;gap:6px;margin-top:7px;padding:4px 8px;border-radius:999px;background:${wasteType.bg};color:${wasteType.color};border:1px solid ${wasteType.border};font-size:.68rem;font-weight:900;text-transform:uppercase;">${wasteType.icon} ${wasteType.label}</div>
+            <div style="font-size:.74rem;color:#64748b;margin-top:6px;">${c.sector} • ${c.severity} • ~${Number(c.estimatedWeightKg || 0).toFixed(2)} kg</div>
           </div>
           <div style="font-size:.72rem;color:#7e22ce;font-weight:700;">Resident report</div>
         </div>

@@ -310,6 +310,17 @@ class StateManager {
     return type === 'points' ? `${amount.toLocaleString()} pts` : `₱${amount.toFixed(2)}`;
   }
 
+  getWasteTypeInfo(comm) {
+    const type = comm?.wasteType || 'recyclable';
+    const info = {
+      hazardous: { label: 'Hazardous', icon: '⚠️', bg: '#fef2f2', color: '#b91c1c', border: '#fecaca' },
+      non_biodegradable: { label: 'Non-biodegradable', icon: '🧴', bg: '#fff7ed', color: '#c2410c', border: '#fed7aa' },
+      recyclable: { label: 'Recyclable', icon: '♻️', bg: '#ecfdf5', color: '#047857', border: '#a7f3d0' },
+      biodegradable: { label: 'Biodegradable', icon: '🍃', bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0' }
+    };
+    return info[type] || info.recyclable;
+  }
+
   getCommissions(filter = 'all') {
     if (filter === 'all') return this.commissions;
     if (filter === 'open') return this.commissions.filter(c => c.status === 'open' && this.getRewardAmount(c) > 0);
@@ -352,6 +363,7 @@ class StateManager {
       lat: parseFloat(reportData.lat) || 13.1398,
       lng: parseFloat(reportData.lng) || 123.7345,
       category: reportData.category || 'Mixed Organic & Litter',
+      wasteType: reportData.wasteType || 'recyclable',
       severity: reportData.severity || 'medium',
       rewardType: null,
       rewardPhp: null,
