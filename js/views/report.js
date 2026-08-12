@@ -39,9 +39,6 @@ window.ReportView = {
               <i class="fa-solid fa-broom"></i> Create Cleanup Task
             </div>
             <h1 style="font-size: 1.4rem; font-weight: 800; margin-top: 6px; color: #0f172a;">Choose Task Type</h1>
-            <p style="font-size: 0.82rem; color: #64748b;">
-              Private means a private property address, not a hidden task. Partner tasks pay Clean Points. Public tasks use reputation-based anti-fraud protection.
-            </p>
           </div>
 
           <div class="card" style="padding:1rem 1.1rem; margin-bottom:1rem; background:#ffffff; border:1px solid #bbf7d0;">
@@ -51,7 +48,6 @@ window.ReportView = {
               <button class="chip-select-btn ${this.formData.taskType === 'partner' ? 'active' : ''}" type="button" onclick="window.ReportView.setTaskType('partner')">🤝 Partner Challenge</button>
               <button class="chip-select-btn ${this.formData.taskType === 'public' ? 'active' : ''}" type="button" onclick="window.ReportView.setTaskType('public')">🌍 Community Cleanup</button>
             </div>
-            <div style="margin-top:10px;font-size:.75rem;color:#475569;line-height:1.45;">${this.formData.taskType === 'private_property' ? 'Property owner funds a cash reward. Cleaner payout is 95%; StreetClean keeps a 5% platform fee.' : (this.formData.taskType === 'partner' ? 'Partner campaigns award Clean Points that cleaners can redeem for partner coupons and discounts.' : 'Public reports are visible to everyone. Cleaners need a reputation score of 60+ and their evidence is automatically checked.')}</div>
             ${this.formData.taskType === 'private_property' ? `
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:10px;">
                 <div><label class="form-label">Property owner / manager</label><input class="form-control" id="property-owner" value="${this.formData.propertyOwner || user.name}" placeholder="Owner or property manager"></div>
