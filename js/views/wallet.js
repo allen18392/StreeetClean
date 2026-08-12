@@ -66,6 +66,36 @@ window.WalletView = {
             </div>
           </div>
 
+          <!-- Partner Rewards -->
+          <div class="card partner-rewards-card" style="margin-bottom: 1.25rem; padding: 1.25rem; background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%); border: 1px solid #e9d5ff;">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:1rem;">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div class="brand-icon" style="width:32px;height:32px;font-size:.9rem;background:#f3e8ff;color:#7e22ce;"><i class="fa-solid fa-gift"></i></div>
+                  <h3 style="font-size:1rem;font-weight:800;color:#0f172a;margin:0;">Partner Rewards</h3>
+                </div>
+                <div style="font-size:.72rem;color:#64748b;margin-top:5px;">Use your accumulated Ibalong Clean Points to claim partner perks.</div>
+              </div>
+              <div style="padding:6px 10px;border-radius:999px;background:#f3e8ff;color:#7e22ce;font-weight:800;font-size:.72rem;white-space:nowrap;">${user.cleanPoints.toLocaleString()} pts</div>
+            </div>
+            <div class="partner-reward-grid">
+              ${window.WalletView.partnerRewards.map(reward => {
+                const canClaim = user.cleanPoints >= reward.points;
+                return `
+                  <div class="partner-reward-card">
+                    <div class="partner-reward-icon" style="background:${reward.bg};color:${reward.color};"><i class="fa-solid ${reward.icon}"></i></div>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:.65rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">${reward.partner}</div>
+                      <div style="font-weight:800;color:#0f172a;font-size:.86rem;margin:2px 0;">${reward.name}</div>
+                      <div style="font-size:.7rem;color:#7e22ce;font-weight:800;">${reward.points.toLocaleString()} pts</div>
+                    </div>
+                    <button class="btn btn-sm ${canClaim ? 'btn-secondary' : ''}" ${canClaim ? `onclick="window.WalletView.claimPartnerReward('${reward.id}')"` : 'disabled'} style="white-space:nowrap;">${canClaim ? 'Claim' : 'Need points'}</button>
+                  </div>`;
+              }).join('')}
+            </div>
+            <div style="font-size:.65rem;color:#94a3b8;margin-top:.75rem;">Partner reward names and point costs are configurable for your confirmed sponsors.</div>
+          </div>
+
           <!-- Ibalong Festival 2026 Eco-Warrior Leaderboard -->
           <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem; background: #ffffff;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
@@ -110,8 +140,8 @@ window.WalletView = {
               ${transactions.map(tx => `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
                   <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 36px; height: 36px; border-radius: var(--radius-full); background: ${tx.amountPhp > 0 ? '#dcfce7' : '#fee2e2'}; color: ${tx.amountPhp > 0 ? 'var(--emerald-700)' : '#e11d48'}; display: flex; align-items: center; justify-content: center; font-size: 1rem;">
-                      <i class="fa-solid ${tx.amountPhp > 0 ? 'fa-arrow-down-left' : 'fa-arrow-up-right'}"></i>
+                    <div style="width: 36px; height: 36px; border-radius: var(--radius-full); background: ${tx.points < 0 ? '#f3e8ff' : (tx.amountPhp > 0 ? '#dcfce7' : '#fee2e2')}; color: ${tx.points < 0 ? '#7e22ce' : (tx.amountPhp > 0 ? 'var(--emerald-700)' : '#e11d48')}; display: flex; align-items: center; justify-content: center; font-size: 1rem;">
+                      <i class="fa-solid ${tx.points < 0 ? 'fa-gift' : (tx.amountPhp > 0 ? 'fa-arrow-down-left' : 'fa-arrow-up-right')}"></i>
                     </div>
                     <div>
                       <div style="font-weight: 800; font-size: 0.85rem; color: #0f172a;">${tx.title}</div>
@@ -119,8 +149,8 @@ window.WalletView = {
                     </div>
                   </div>
                   <div style="text-align: right;">
-                    <div class="font-mono" style="font-weight: 800; font-size: 0.95rem; color: ${tx.amountPhp > 0 ? 'var(--emerald-700)' : '#e11d48'};">
-                      ${tx.amountPhp > 0 ? '+' : ''}₱${Math.abs(tx.amountPhp).toFixed(2)}
+                    <div class="font-mono" style="font-weight: 800; font-size: 0.95rem; color: ${tx.points < 0 ? '#7e22ce' : (tx.amountPhp > 0 ? 'var(--emerald-700)' : '#64748b')};">
+                      ${tx.points < 0 ? `-${Math.abs(tx.points).toLocaleString()} pts` : (tx.amountPhp > 0 ? `+₱${Number(tx.amountPhp).toFixed(2)}` : `${Number(tx.points || 0).toLocaleString()} pts`)}
                     </div>
                     <span class="status-badge status-completed" style="font-size: 0.65rem; padding: 2px 6px;">Completed</span>
                   </div>
@@ -132,6 +162,29 @@ window.WalletView = {
         </div>
       </div>
     `;
+  },
+
+  partnerRewards: [
+    { id: 'eco-100', partner: 'EcoMart', name: '₱100 Eco Voucher', points: 500, icon: 'fa-basket-shopping', bg: '#ecfdf5', color: '#047857' },
+    { id: 'green-meal', partner: 'GreenBite', name: '₱150 Green Meal Voucher', points: 750, icon: 'fa-utensils', bg: '#fef3c7', color: '#b45309' },
+    { id: 'cycle-pass', partner: 'CycleHub', name: '1-Day Bike Pass', points: 600, icon: 'fa-bicycle', bg: '#eff6ff', color: '#1d4ed8' },
+    { id: 'recycle-kit', partner: 'GreenCycle', name: 'Recycling Starter Kit', points: 900, icon: 'fa-recycle', bg: '#f3e8ff', color: '#7e22ce' }
+  ],
+
+  async claimPartnerReward(id) {
+    const reward = this.partnerRewards.find(r => r.id === id);
+    if (!reward) return;
+    const user = window.appState.getUser();
+    if (!user || user.cleanPoints < reward.points) {
+      window.showToast('You need more Clean Points for this reward.', 'error');
+      return;
+    }
+    const redemption = await window.appState.redeemPartnerReward(reward);
+    if (redemption) {
+      window.soundSystem.fanfare();
+      window.showToast(`${reward.name} claimed from ${reward.partner}! ${reward.points.toLocaleString()} points redeemed.`, 'gold');
+      window.renderRoute();
+    }
   },
 
   openWithdrawModal() {

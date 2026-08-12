@@ -717,3 +717,17 @@ body.mode-mobile-frame .site-footer {
 body.mode-mobile-frame .site-footer {
   display: none;
 }
+
+
+/* Connected partner footer */
+.partner-strip { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+.partner-chip { display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid #e2e8f0; border-radius:999px; background:#f8fafc; color:#334155; font-size:.68rem; font-weight:800; }
+.partner-mark { width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:#ecfdf5; color:#047857; }
+@media (max-width: 640px) { .partner-strip { display:grid; grid-template-columns:1fr 1fr; } .partner-chip { justify-content:center; } }
+
+
+.partner-reward-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.partner-reward-card { display:flex; align-items:center; gap:10px; padding:11px; background:#fff; border:1px solid #e9d5ff; border-radius:14px; box-shadow:0 4px 12px rgba(15,23,42,.04); }
+.partner-reward-icon { width:38px; height:38px; flex:0 0 38px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:.95rem; }
+.partner-reward-card button:disabled { opacity:.55; cursor:not-allowed; background:#f1f5f9; color:#64748b; border-color:#e2e8f0; }
+@media (max-width: 640px) { .partner-reward-grid { grid-template-columns:1fr; } }

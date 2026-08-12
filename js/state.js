@@ -62,7 +62,8 @@ function makeUserProfile(uid, data = {}) {
       hoursContributed: Number(data.stats?.hoursContributed || 0)
     },
     badges: Array.isArray(data.badges) ? data.badges : [],
-    gear: Array.isArray(data.gear) ? data.gear : []
+    gear: Array.isArray(data.gear) ? data.gear : [],
+    redeemedPartnerRewards: Array.isArray(data.redeemedPartnerRewards) ? data.redeemedPartnerRewards : []
   };
 }
 
@@ -347,6 +348,50 @@ class StateManager {
       userId,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+  }
+
+  async redeemPartnerReward(reward) {
+    const user = this.getUser();
+    if (!user || !reward || user.cleanPoints < Number(reward.points)) return false;
+
+    const points = Math.round(Number(reward.points));
+    user.cleanPoints -= points;
+    const redemption = {
+      id: `PR-${Date.now()}`,
+      partner: reward.partner,
+      reward: reward.name,
+      points,
+      claimedAt: new Date().toISOString()
+    };
+    user.redeemedPartnerRewards = [redemption, ...(user.redeemedPartnerRewards || [])].slice(0, 25);
+
+    const tx = {
+      id: `TX-PR-${Date.now()}`,
+      type: 'partner_reward',
+      title: `Partner Reward: ${reward.name}`,
+      reference: redemption.id,
+      amountPhp: 0,
+      points: -points,
+      rewardType: 'partner_reward',
+      status: 'completed',
+      date: 'Today',
+      time: 'Just now',
+      channel: reward.partner
+    };
+
+    try {
+      await this.persistUser(user);
+      await this.addTransaction(user.id, tx);
+      this.transactions.unshift({ ...tx, userId: user.id });
+      this.emit('stateChanged');
+      return redemption;
+    } catch (err) {
+      user.cleanPoints += points;
+      user.redeemedPartnerRewards = (user.redeemedPartnerRewards || []).filter(r => r.id !== redemption.id);
+      console.error('Could not redeem partner reward:', err.code || err.message || err);
+      window.showToast?.('Could not save the partner reward claim.', 'error');
+      return false;
+    }
   }
 
   addReport(reportData) {
