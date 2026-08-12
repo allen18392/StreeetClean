@@ -115,8 +115,8 @@ window.CommissionsView = {
               : `<span class="status-badge status-${c.status}"><span class="badge-dot"></span> ${c.status.replace('_', ' ')}</span>`}
             <span class="severity-pill ${c.severity}">${c.severity}</span>
           </div>
-          <div class="task-card-bounty ${Number(c.rewardPhp) > 0 ? '' : 'is-tba'}">
-            ${Number(c.rewardPhp) > 0 ? `₱${Number(c.rewardPhp).toFixed(2)}` : 'TBA'}
+          <div class="task-card-bounty ${window.appState.getRewardAmount(c) > 0 ? '' : 'is-tba'}">
+            ${window.appState.getRewardDisplay(c)}
           </div>
         </div>
 

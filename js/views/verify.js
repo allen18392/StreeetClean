@@ -111,7 +111,7 @@ window.VerifyView = {
                     </div>
                   </div>
                   <div style="display: flex; align-items: center; gap: 12px;">
-                    <span class="font-mono" style="font-weight: 800; color: #b45309; font-size: 0.95rem;">₱${c.rewardPhp}</span>
+                    <span class="font-mono" style="font-weight: 800; color: #b45309; font-size: 0.95rem;">${window.appState.getRewardDisplay(c)}</span>
                     <span class="status-badge status-completed"><i class="fa-solid fa-check"></i> Approved</span>
                   </div>
                 </div>
@@ -143,14 +143,21 @@ window.VerifyView = {
           <strong>Description:</strong> ${c.description || 'No additional notes provided.'}
         </div>
 
-        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="min-width:170px;flex:0 0 190px;">
+            <label class="form-label" for="reward-type-${c.id}">Reward type</label>
+            <select id="reward-type-${c.id}" class="form-control" onchange="window.VerifyView.updateRewardInput('${c.id}')">
+              <option value="money">Money (₱)</option>
+              <option value="points">Clean Points</option>
+            </select>
+          </div>
           <div style="flex:1;min-width:180px;">
-            <label class="form-label" for="bounty-${c.id}">Set flexible cleanup reward</label>
+            <label class="form-label" for="bounty-${c.id}" id="reward-label-${c.id}">Reward amount (₱)</label>
             <div style="position:relative;">
-              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:800;color:#b45309;">₱</span>
+              <span id="reward-prefix-${c.id}" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:800;color:#b45309;">₱</span>
               <input id="bounty-${c.id}" type="number" min="0.01" step="0.01" placeholder="Enter amount" class="form-control" style="padding-left:28px;" />
             </div>
-            <div style="font-size:.68rem;color:#64748b;margin-top:4px;">No fixed minimum or maximum. Use your official assessment of the work required.</div>
+            <div id="reward-help-${c.id}" style="font-size:.68rem;color:#64748b;margin-top:4px;">Enter the flexible cash reward based on your official assessment.</div>
           </div>
           <button class="btn btn-gold" style="min-height:42px;" onclick="window.VerifyView.assignBounty('${c.id}')">
             <i class="fa-solid fa-check"></i> Assign Reward & Publish Task
@@ -160,18 +167,39 @@ window.VerifyView = {
     `;
   },
 
+  updateRewardInput(id) {
+    const type = document.getElementById(`reward-type-${id}`)?.value || 'money';
+    const label = document.getElementById(`reward-label-${id}`);
+    const prefix = document.getElementById(`reward-prefix-${id}`);
+    const input = document.getElementById(`bounty-${id}`);
+    const help = document.getElementById(`reward-help-${id}`);
+    if (type === 'points') {
+      if (label) label.textContent = 'Reward amount (pts)';
+      if (prefix) prefix.textContent = '★';
+      if (input) { input.step = '1'; input.min = '1'; input.placeholder = 'Enter points'; }
+      if (help) help.textContent = 'Enter the flexible Clean Points reward based on your official assessment.';
+    } else {
+      if (label) label.textContent = 'Reward amount (₱)';
+      if (prefix) prefix.textContent = '₱';
+      if (input) { input.step = '0.01'; input.min = '0.01'; input.placeholder = 'Enter amount'; }
+      if (help) help.textContent = 'Enter the flexible cash reward based on your official assessment.';
+    }
+  },
+
   assignBounty(id) {
+    const type = document.getElementById(`reward-type-${id}`)?.value || 'money';
     const input = document.getElementById(`bounty-${id}`);
     const amount = Number(input?.value);
     if (!Number.isFinite(amount) || amount <= 0) {
-      window.showToast('Enter a valid reward greater than ₱0.', 'error');
+      window.showToast(type === 'points' ? 'Enter a valid points reward greater than 0.' : 'Enter a valid money reward greater than ₱0.', 'error');
       return;
     }
 
-    const success = window.appState.assignBounty(id, amount);
+    const success = window.appState.assignBounty(id, type, amount);
     if (success) {
       window.soundSystem.success();
-      window.showToast(`Reward set to ₱${amount.toFixed(2)}. Task is now open for cleaners.`, 'gold');
+      const label = type === 'points' ? `${Math.round(amount).toLocaleString()} pts` : `₱${amount.toFixed(2)}`;
+      window.showToast(`Reward set to ${label}. Task is now open for cleaners.`, 'gold');
       window.renderRoute();
     } else {
       window.showToast('Only an authorized verifier can assign this reward.', 'error');
@@ -200,8 +228,8 @@ window.VerifyView = {
             <p style="font-size: 0.78rem; color: #64748b;"><i class="fa-solid fa-map-pin" style="color: var(--emerald-600);"></i> ${c.address}</p>
           </div>
           <div style="text-align: right;">
-            <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #b45309;">₱${Number(c.rewardPhp).toFixed(0)}</div>
-            <div style="font-size: 0.7rem; color: var(--emerald-700); font-weight: 700;">+${c.cleanPoints} points</div>
+            <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #b45309;">${window.appState.getRewardDisplay(c)}</div>
+            <div style="font-size: 0.7rem; color: var(--emerald-700); font-weight: 700;">${window.appState.getRewardType(c) === 'points' ? 'Clean Points reward' : 'Cash reward'}</div>
           </div>
         </div>
 
@@ -266,7 +294,7 @@ window.VerifyView = {
             <i class="fa-solid fa-rotate-left"></i> Reject / Re-clean
           </button>
           <button class="btn btn-primary" style="flex: 2;" onclick="window.VerifyView.approveProof('${c.id}')">
-            <i class="fa-solid fa-stamp"></i> Approve & Release ₱${Number(c.rewardPhp).toFixed(0)}
+            <i class="fa-solid fa-stamp"></i> Approve & Release ${window.appState.getRewardDisplay(c)}
           </button>
         </div>
 

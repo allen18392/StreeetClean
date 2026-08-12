@@ -265,10 +265,10 @@ window.openCommissionDetails = (id) => {
       </div>
 
       <!-- Reward Hero -->
-      <div style="display: flex; align-items: center; justify-content: space-between; background: ${Number(comm.rewardPhp) > 0 ? '#fef3c7' : '#f3e8ff'}; border: 1px solid ${Number(comm.rewardPhp) > 0 ? '#fde68a' : '#d8b4fe'}; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; background: ${window.appState.getRewardAmount(comm) > 0 ? '#fef3c7' : '#f3e8ff'}; border: 1px solid ${window.appState.getRewardAmount(comm) > 0 ? '#fde68a' : '#d8b4fe'}; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
         <div>
-          <div style="font-size: 0.72rem; color: ${Number(comm.rewardPhp) > 0 ? '#92400e' : '#7e22ce'}; text-transform: uppercase; font-weight: 700;">${Number(comm.rewardPhp) > 0 ? 'LGU-Assigned Cleanup Reward' : 'Cleanup Reward Pending'}</div>
-          <div class="font-mono" style="font-size: 1.6rem; font-weight: 800; color: ${Number(comm.rewardPhp) > 0 ? '#b45309' : '#7e22ce'};">${Number(comm.rewardPhp) > 0 ? `₱${Number(comm.rewardPhp).toFixed(2)}` : 'TBA'}</div>
+          <div style="font-size: 0.72rem; color: ${window.appState.getRewardAmount(comm) > 0 ? '#92400e' : '#7e22ce'}; text-transform: uppercase; font-weight: 700;">${window.appState.getRewardAmount(comm) > 0 ? (window.appState.getRewardType(comm) === 'points' ? 'LGU-Assigned Points Reward' : 'LGU-Assigned Cash Reward') : 'Cleanup Reward Pending'}</div>
+          <div class="font-mono" style="font-size: 1.6rem; font-weight: 800; color: ${window.appState.getRewardAmount(comm) > 0 ? '#b45309' : '#7e22ce'};">${window.appState.getRewardDisplay(comm)}</div>
         </div>
         <div style="text-align: right;">
           <div style="font-size: 0.72rem; color: #92400e;">Estimated Weight</div>
@@ -316,13 +316,13 @@ window.openCommissionDetails = (id) => {
         </div>
       ` : ''}
 
-      ${comm.status === 'open' && Number(comm.rewardPhp) > 0 ? `
+      ${comm.status === 'open' && window.appState.getRewardAmount(comm) > 0 ? `
         <button class="btn btn-gold btn-block" style="margin-top: 0.25rem;" onclick="window.claimTask('${comm.id}')">
-          <i class="fa-solid fa-hand-holding-dollar"></i> Claim Cleanup Task (₱${Number(comm.rewardPhp).toFixed(2)})
+          <i class="fa-solid fa-hand-holding-dollar"></i> Claim Cleanup Task (${window.appState.getRewardDisplay(comm)})
         </button>
       ` : ''}
 
-      ${comm.status === 'open' && Number(comm.rewardPhp) <= 0 ? `
+      ${comm.status === 'open' && window.appState.getRewardAmount(comm) <= 0 ? `
         <div class="card" style="padding:10px;background:#faf5ff;border:1px solid #d8b4fe;text-align:center;color:#7e22ce;font-weight:700;font-size:.85rem;margin-top:0.25rem;">
           <i class="fa-solid fa-shield-halved"></i> Reward pending — an authorized LGU verifier must assign the bounty before this task can be claimed.
         </div>
@@ -342,7 +342,7 @@ window.openCommissionDetails = (id) => {
 
       ${comm.status === 'completed' ? `
         <div class="card" style="padding: 10px; background: #dcfce7; border: 1px solid #bbf7d0; text-align: center; color: #15803d; font-weight: 700; font-size: 0.85rem;">
-          <i class="fa-solid fa-circle-check"></i> Clean Verified! ₱${comm.rewardPhp} Bounty Paid to ${comm.assignedTo || 'Cleaner'}.
+          <i class="fa-solid fa-circle-check"></i> Clean Verified! ${window.appState.getRewardDisplay(comm)} Reward Paid to ${comm.assignedTo || 'Cleaner'}.
         </div>
       ` : ''}
 

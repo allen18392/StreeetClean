@@ -2,11 +2,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // StreetClean prototype rules — demo/presentation mode.
-    // Any signed-in user can read and write any document. This trades
-    // fine-grained security for reliability during a live demo. Tighten
-    // per-collection/per-field rules before any real production use.
+    // Prototype/demo rules: any authenticated user can read/write app data.
+    // This restores the pre-role-change behavior.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

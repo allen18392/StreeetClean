@@ -291,9 +291,28 @@ class StateManager {
     }
   }
 
+  getRewardType(comm) {
+    if (comm?.rewardType === 'points' || comm?.rewardType === 'money') return comm.rewardType;
+    if (Number(comm?.rewardPhp || 0) > 0) return 'money';
+    if (Number(comm?.cleanPoints || 0) > 0) return 'points';
+    return null;
+  }
+
+  getRewardAmount(comm) {
+    const type = this.getRewardType(comm);
+    return type === 'points' ? Number(comm.cleanPoints || 0) : Number(comm.rewardPhp || 0);
+  }
+
+  getRewardDisplay(comm) {
+    const type = this.getRewardType(comm);
+    const amount = this.getRewardAmount(comm);
+    if (!type || amount <= 0) return 'TBA';
+    return type === 'points' ? `${amount.toLocaleString()} pts` : `₱${amount.toFixed(2)}`;
+  }
+
   getCommissions(filter = 'all') {
     if (filter === 'all') return this.commissions;
-    if (filter === 'open') return this.commissions.filter(c => c.status === 'open' && Number(c.rewardPhp) > 0);
+    if (filter === 'open') return this.commissions.filter(c => c.status === 'open' && this.getRewardAmount(c) > 0);
     if (filter === 'in_progress' || filter === 'claimed') return this.commissions.filter(c => c.status === 'in_progress');
     if (filter === 'in_review') return this.commissions.filter(c => c.status === 'in_review');
     if (filter === 'pending_bounty') return this.commissions.filter(c => c.status === 'pending_bounty');
@@ -334,6 +353,7 @@ class StateManager {
       lng: parseFloat(reportData.lng) || 123.7345,
       category: reportData.category || 'Mixed Organic & Litter',
       severity: reportData.severity || 'medium',
+      rewardType: null,
       rewardPhp: null,
       bountyStatus: 'pending_assignment',
       bountyAssignedBy: null,
@@ -368,17 +388,24 @@ class StateManager {
     return newCommission;
   }
 
-  assignBounty(id, amountPhp) {
+  assignBounty(id, rewardType, amount) {
     const comm = this.getCommissionById(id);
     const user = this.getUser();
-    const amount = Number(amountPhp);
+    const type = rewardType === 'points' ? 'points' : rewardType === 'money' ? 'money' : null;
+    const numericAmount = Number(amount);
 
     if (!comm || !user || user.role !== 'verifier') return false;
     if (comm.status !== 'pending_bounty') return false;
-    if (!Number.isFinite(amount) || amount <= 0) return false;
+    if (!type || !Number.isFinite(numericAmount) || numericAmount <= 0) return false;
 
-    comm.rewardPhp = Math.round(amount * 100) / 100;
-    comm.cleanPoints = Math.round(comm.rewardPhp * 1.6);
+    comm.rewardType = type;
+    if (type === 'money') {
+      comm.rewardPhp = Math.round(numericAmount * 100) / 100;
+      comm.cleanPoints = 0;
+    } else {
+      comm.rewardPhp = 0;
+      comm.cleanPoints = Math.round(numericAmount);
+    }
     comm.bountyStatus = 'assigned';
     comm.bountyAssignedBy = user.name;
     comm.bountyAssignedById = user.id;
@@ -386,6 +413,7 @@ class StateManager {
     comm.status = 'open';
 
     firestore.collection('reports').doc(comm.id).update({
+      rewardType: comm.rewardType,
       rewardPhp: comm.rewardPhp,
       cleanPoints: comm.cleanPoints,
       bountyStatus: comm.bountyStatus,
@@ -394,7 +422,7 @@ class StateManager {
       bountyAssignedAt: firebase.firestore.FieldValue.serverTimestamp(),
       status: comm.status
     }).catch(err => {
-      console.error('Could not assign bounty:', err.code || err.message || err);
+      console.error('Could not assign reward:', err.code || err.message || err);
       window.showToast?.('Could not save the reward assignment to Firebase.', 'error');
     });
 
@@ -407,7 +435,7 @@ class StateManager {
     const comm = this.getCommissionById(id);
     const user = this.getUser();
 
-    if (!comm || comm.status !== 'open' || !user || Number(comm.rewardPhp) <= 0) return false;
+    if (!comm || comm.status !== 'open' || !user || this.getRewardAmount(comm) <= 0) return false;
 
     comm.status = 'in_progress';
     comm.assignedTo = user.name;
@@ -487,8 +515,11 @@ class StateManager {
       return false;
     }
 
-    cleaner.phpBalance += Number(comm.rewardPhp || 0);
-    cleaner.cleanPoints += Number(comm.cleanPoints || 0);
+    if (this.getRewardType(comm) === 'money') {
+      cleaner.phpBalance += Number(comm.rewardPhp || 0);
+    } else if (this.getRewardType(comm) === 'points') {
+      cleaner.cleanPoints += Number(comm.cleanPoints || 0);
+    }
     cleaner.stats.completedCleans += 1;
     cleaner.stats.kgRecycled += Number(comm.proofData?.weightRecordedKg || comm.estimatedWeightKg || 0);
 
@@ -499,6 +530,7 @@ class StateManager {
       reference: comm.id,
       amountPhp: Number(comm.rewardPhp || 0),
       points: Number(comm.cleanPoints || 0),
+      rewardType: this.getRewardType(comm),
       status: 'completed',
       date: 'Today',
       time: 'Just now',

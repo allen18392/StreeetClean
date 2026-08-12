@@ -9,6 +9,7 @@ window.DashboardView = {
     const reports = window.appState.getCommissions('all');
     const completed = reports.filter(r => r.status === 'completed');
     const totalBounties = completed.reduce((sum, r) => sum + Number(r.rewardPhp || 0), 0);
+    const totalRewardPoints = completed.reduce((sum, r) => sum + Number(r.cleanPoints || 0), 0);
     const wasteDiverted = completed.reduce((sum, r) => sum + Number(r.proofData?.weightRecordedKg || r.estimatedWeightKg || 0), 0);
     const cleanlinessScores = completed.map(r => Number(r.proofData?.aiCleanlinessScore)).filter(Number.isFinite);
     const cleanlinessScore = cleanlinessScores.length ? cleanlinessScores.reduce((a,b) => a+b, 0) / cleanlinessScores.length : 0;
@@ -38,6 +39,12 @@ window.DashboardView = {
               <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Total Bounties Paid</div>
               <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #b45309; margin-top: 4px;">₱${totalBounties.toLocaleString()}</div>
               <div style="font-size: 0.65rem; color: var(--emerald-700);">Paid via GCash/Maya</div>
+            </div>
+
+            <div class="card" style="padding: 1rem; text-align: center; background: #ffffff;">
+              <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Clean Points Awarded</div>
+              <div class="font-mono" style="font-size: 1.35rem; font-weight: 800; color: #7e22ce; margin-top: 4px;">${totalRewardPoints.toLocaleString()} pts</div>
+              <div style="font-size: 0.65rem; color: #7e22ce;">Paid as points rewards</div>
             </div>
 
             <div class="card" style="padding: 1rem; text-align: center; background: #ffffff;">
