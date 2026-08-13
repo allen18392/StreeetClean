@@ -146,7 +146,7 @@ window.AuthView = {
                   <i class="fa-solid fa-camera"></i>
                 </div>
                 <div>
-                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Resident / Reporter</div>
+                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Resident</div>
                   <div style="font-size: 0.72rem; color: #64748b;">Report festival litter & pin locations.</div>
                 </div>
               </div>
@@ -161,7 +161,7 @@ window.AuthView = {
                   <i class="fa-solid fa-broom"></i>
                 </div>
                 <div>
-                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Cleaner / Eco-Warrior</div>
+                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Cleaner</div>
                   <div style="font-size: 0.72rem; color: #64748b;">Claim cleanup tasks & earn ₱ bounties.</div>
                 </div>
               </div>
@@ -176,7 +176,7 @@ window.AuthView = {
                   <i class="fa-solid fa-shield-halved"></i>
                 </div>
                 <div>
-                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Verifier / Marshall</div>
+                  <div style="font-weight: 800; font-size: 0.92rem; color: #0f172a;">Verifier</div>
                   <div style="font-size: 0.72rem; color: #64748b;">Audit photo proofs & approve cleanups.</div>
                 </div>
               </div>
