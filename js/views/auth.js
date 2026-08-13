@@ -266,15 +266,6 @@ window.AuthView = {
           </div>
         </div>
 
-        <div class="card" style="padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; margin-bottom: 1.25rem;">
-          <div style="display: flex; gap: 8px;">
-            <i class="fa-solid fa-gift" style="color: var(--emerald-600); font-size: 1.2rem; margin-top: 2px;"></i>
-            <div style="font-size: 0.78rem; color: #166534;">
-              <strong>Welcome Civic Grant:</strong> New registered accounts receive an initial ₱500 civic credit and 250 Ibalong points automatically!
-            </div>
-          </div>
-        </div>
-
         <div style="display: flex; gap: 8px;">
           <button class="btn btn-secondary" style="flex: 1;" onclick="window.AuthView.setStep(2)">
             <i class="fa-solid fa-arrow-left"></i> Back
